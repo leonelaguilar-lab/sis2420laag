@@ -10,7 +10,8 @@
       "id": 2,
       "nombre": "AMD Ryzen 5 5600",
       "precio": 160,
-      "stock": 8
+      "stock": 8,
+      "gama": "m"
     },
     {
       "id": 3,
@@ -22,7 +23,8 @@
       "id": 5,
       "nombre": "Intel core i3-11400F",
       "precio": 500,
-      "stock": 4
+      "stock": 4,
+      "gama": "m"
     }
   ],
   "gpu": [
@@ -30,13 +32,15 @@
       "id": 1,
       "nombre": "NVIDIA RTX 3060",
       "precio": 350,
-      "stock": 5
+      "stock": 5,
+      "gama": "m"
     },
     {
       "id": 2,
       "nombre": "AMD RX 6600",
       "precio": 280,
-      "stock": 7
+      "stock": 7,
+      "gama": "mh"
     }
   ],
   "ram": [],
