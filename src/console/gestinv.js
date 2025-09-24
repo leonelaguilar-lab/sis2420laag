@@ -68,11 +68,13 @@ function agregarProducto(categoria) {
   rl.question("Nombre del producto: ", (nombre) => {
     rl.question("Precio: ", (precio) => {
       rl.question("Stock: ", (stock) => {
+        rl.question("Rendimiento: ", (rendimiento) =>{
         const nuevo = {
           id: inventario[categoria].length + 1,
           nombre,
           precio: Number(precio),
-          stock: Number(stock)
+          stock: Number(stock),
+          rendimiento,
         };
 
         inventario[categoria].push(nuevo);
@@ -80,6 +82,7 @@ function agregarProducto(categoria) {
 
         console.log(chalk.green("\nProducto agregado con éxito!"));
         setTimeout(menu1, 1500);
+        });
       });
     });
   });
