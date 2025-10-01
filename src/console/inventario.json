@@ -13,7 +13,7 @@
       "nombre": "Intel Core i5-12400F",
       "marca": "Intel",
       "precio": 180,
-      "stock": 15,
+      "stock": 14,
       "rendimiento": 75
     },
     {
@@ -79,7 +79,7 @@
       "nombre": "NVIDIA GeForce GTX 1660 Super",
       "marca": "NVIDIA",
       "precio": 220,
-      "stock": 17,
+      "stock": 16,
       "rendimiento": 60
     },
     {

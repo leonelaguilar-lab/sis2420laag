@@ -1,36 +1,34 @@
 import fs from "fs";
 import chalk from "chalk";
 import readline from "readline";
-
+//================== IN/OUTPUT ======================
 const rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout
 });
-
+//=================== VARIABLES GLOBALES
 let carrito = []; // variable global para el carrito
-
+const INVENTARIO_PATH = "../../data/inventario.json"; //variable para llamar la ruta del inventario
 // ================== INVENTARIO ==================
 function cargarInventario() {
-  const data = fs.readFileSync("../../data/inventario.json", "utf8");
+  const data = fs.readFileSync(INVENTARIO_PATH, "utf8");
   return JSON.parse(data);
 }
-
 function guardarInventario(data) {
-  fs.writeFileSync("inventario.json", JSON.stringify(data, null, 2));
+  fs.writeFileSync(INVENTARIO_PATH, JSON.stringify(data, null, 2));
 }
-
 // ================== MENU PRINCIPAL ==================
 function menu0() {
   console.clear();
   console.log(chalk.blue.bold("\n=== TIENDA DE PC COMPONENTES ===\n"));
-  console.log(chalk.magenta("1. Catálogo de CPU"));
-  console.log(chalk.magenta("2. Catálogo de GPU"));
-  console.log(chalk.magenta("3. Catálogo de Almacenamiento"));
-  console.log(chalk.magenta("4. Catálogo de RAM"));
-  console.log(chalk.magenta("5. Catálogo de PSU"));
-  console.log(chalk.magenta("6. Catálogo de Gabinetes"));
-  console.log(chalk.magenta("7. Ver Carrito "));
-  console.log(chalk.red("0. Salir\n"));
+  console.log(chalk.redBright("1. Catálogo de CPU"));
+  console.log(chalk.redBright("2. Catálogo de GPU"));
+  console.log(chalk.redBright("3. Catálogo de Almacenamiento"));
+  console.log(chalk.redBright("4. Catálogo de RAM"));
+  console.log(chalk.redBright("5. Catálogo de PSU"));
+  console.log(chalk.redBright("6. Catálogo de Gabinetes"));
+  console.log(chalk.redBright("7. Ver Carrito "));
+  console.log(chalk.cyanBright("0. Salir\n"));
 
   rl.question(chalk.yellow("Elige una opción: "), (opcion) => {
     switch (opcion) {
@@ -48,15 +46,14 @@ function menu0() {
     }
   });
 }
-
 // ================== FUNCION PARA VER CATÁLOGOS ==================
 function verCat(categoria) {
   console.clear();
   const inventario = cargarInventario();
-  console.log(chalk.magenta.bold(`\n=== ${categoria.toUpperCase()} ===\n`));
+  console.log(chalk.blue.bold(`\n=== ${categoria.toUpperCase()} ===\n`));
   
   inventario[categoria].forEach((item) => {
-    console.log(`${chalk.green(item.id)}. ${item.nombre} - $${item.precio} (Stock: ${item.stock})`);
+    console.log(`${chalk.green(item.id)}. ${chalk.redBright(item.nombre)} - $${chalk.green(item.precio)} (Stock: ${chalk.gray(item.stock)})`);
   });
 
   console.log(chalk.cyan("\n0. Volver al menu"));
@@ -71,7 +68,7 @@ function verCat(categoria) {
       return setTimeout(() => verCat(categoria), 1000);
     }
 
-    if (producto.stock <= 0) {
+    if (producto.stock == 0) {
       console.log(chalk.red(" Producto sin stock."));
       return setTimeout(() => verCat(categoria), 1000);
     }
@@ -84,7 +81,6 @@ function verCat(categoria) {
     setTimeout(menu0, 1000);
   });
 }
-
 // ================== CARRITO ==================
 function verCarrito() {
   console.clear();
@@ -96,7 +92,7 @@ function verCarrito() {
   }
 
   carrito.forEach((item, i) => {
-    console.log(`${i + 1}. ${item.nombre} - $${item.precio}`);
+    console.log(chalk.magenta.bold(`${i + 1}. ${item.nombre} - $${item.precio}`));
   });
 
   const total = carrito.reduce((sum, item) => sum + item.precio, 0);
@@ -119,7 +115,8 @@ function verCarrito() {
   }
 
   console.log(chalk.cyan("\n0. Volver al menú"));
-  console.log(chalk.cyan("E. Eliminar un producto"));
+  console.log(chalk.red("E. Eliminar un producto"));
+  console.log(chalk.green("F. Finalizar compra "));
 
   rl.question(chalk.yellow("\nElige una opción: "), (opcion) => {
     if (opcion === "0") return menu0();
@@ -141,12 +138,16 @@ function verCarrito() {
         }
         setTimeout(verCarrito, 1000);
       });
-    } else {
+    } else if(opcion.toUpperCase() === "F")
+            {
+              console.log(chalk.greenBright("\nCompra finalizada. ¡Gracias por tu compra!"));
+              carrito = [];
+              setTimeout(menu0, 2000);
+            }
+      else {
       console.log(chalk.red("Opción invalida."));
       setTimeout(verCarrito, 1000);
     }
   });
 }
-
-
 menu0();

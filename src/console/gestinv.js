@@ -6,7 +6,7 @@ const rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout
 });
-
+//==================== INVENTARIO =======================
 function cargarInventario() {
   const data = fs.readFileSync("inventario.json", "utf8");
   return JSON.parse(data);
@@ -15,7 +15,7 @@ function cargarInventario() {
 function guardarInventario(inventario) {
   fs.writeFileSync("inventario.json", JSON.stringify(inventario, null, 2));
 }
-
+//==================== MENU PRINCIPAL ===================
 function menu0() {
   console.clear();
   console.log(chalk.cyan.bold("\n=== GESTOR DE INVENTARIO DE LA TIENDA ===\n"));
@@ -32,9 +32,9 @@ function menu0() {
         console.log(chalk.red("\nOpción no válida!"));
         setTimeout(mostrarMenuPrincipal, 1000);
     }
-  });
+  }); 
 }
-
+//==================== MENU PARA AGREGAR =====================
 function menu1(){
   console.clear();
   console.log(chalk.cyan.bold("\n=== CATEGORIAS DE PRODUCTOS ===\n"));
@@ -57,11 +57,9 @@ function menu1(){
         case "0": menu0(); break;
         
     }
-
   });
-
 }
-
+//=================== AGREGAR PRODUCTOS ===================
 function agregarProducto(categoria) {
   const inventario = cargarInventario();
 
@@ -87,7 +85,7 @@ function agregarProducto(categoria) {
     });
   });
 }
-
+//================== MENU PARA QUITAR ========================
 function menu2(){
   console.clear();
   console.log(chalk.cyan.bold("\n=== CATEGORIAS DE PRODUCTOS ===\n"));
@@ -114,6 +112,7 @@ function menu2(){
   });
 
 }
+//================== QUITAR PRODUCTOS ======================
 function quitarProducto(categoria) {
   console.clear();
   const inventario = cargarInventario();
