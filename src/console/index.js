@@ -28,6 +28,7 @@ function menu0() {
   console.log(chalk.redBright("5. Catálogo de PSU"));
   console.log(chalk.redBright("6. Catálogo de Gabinetes"));
   console.log(chalk.redBright("7. Ver Carrito "));
+  console.log(chalk.redBright("8. Ver todo "));
   console.log(chalk.cyanBright("0. Salir\n"));
 
   rl.question(chalk.yellow("Elige una opción: "), (opcion) => {
@@ -39,6 +40,7 @@ function menu0() {
       case "5": verCat("psu"); break;
       case "6": verCat("case"); break;
       case "7": verCarrito(); break;
+      case "8": verCat("all"); break;
       case "0": console.log(chalk.blue("\nSaliendo...")); rl.close(); break;
       default:
         console.log(chalk.red("\nOpción no valida!"));
