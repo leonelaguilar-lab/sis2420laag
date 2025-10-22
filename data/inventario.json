@@ -1,62 +1,342 @@
 {
   "cpu": [
-    { "id": 1, "nombre": "Intel Core i3-10100F", "marca": "Intel", "precio": 100, "stock": 18, "rendimiento": 40 },
-    { "id": 2, "nombre": "Intel Core i5-12400F", "marca": "Intel", "precio": 180, "stock": 15, "rendimiento": 75 },
-    { "id": 3, "nombre": "Intel Core i7-12700K", "marca": "Intel", "precio": 340, "stock": 6, "rendimiento": 92 },
-    { "id": 4, "nombre": "Intel Core i9-12900K", "marca": "Intel", "precio": 590, "stock": 3, "rendimiento": 98 },
-    { "id": 5, "nombre": "AMD Ryzen 3 4100", "marca": "AMD", "precio": 90, "stock": 20, "rendimiento": 35 },
-    { "id": 6, "nombre": "AMD Ryzen 5 5600X", "marca": "AMD", "precio": 200, "stock": 12, "rendimiento": 80 },
-    { "id": 7, "nombre": "AMD Ryzen 7 5800X", "marca": "AMD", "precio": 320, "stock": 7, "rendimiento": 95 },
-    { "id": 8, "nombre": "AMD Ryzen 9 5900X", "marca": "AMD", "precio": 480, "stock": 4, "rendimiento": 99 }
+    {
+      "id": 1,
+      "nombre": "Intel Core i3-10100F",
+      "marca": "Intel",
+      "precio": 100,
+      "stock": 16,
+      "rendimiento": 40
+    },
+    {
+      "id": 2,
+      "nombre": "Intel Core i5-12400F",
+      "marca": "Intel",
+      "precio": 180,
+      "stock": 12,
+      "rendimiento": 75
+    },
+    {
+      "id": 3,
+      "nombre": "Intel Core i7-12700K",
+      "marca": "Intel",
+      "precio": 340,
+      "stock": 5,
+      "rendimiento": 92
+    },
+    {
+      "id": 4,
+      "nombre": "Intel Core i9-12900K",
+      "marca": "Intel",
+      "precio": 590,
+      "stock": 2,
+      "rendimiento": 98
+    },
+    {
+      "id": 5,
+      "nombre": "AMD Ryzen 3 4100",
+      "marca": "AMD",
+      "precio": 90,
+      "stock": 20,
+      "rendimiento": 35
+    },
+    {
+      "id": 6,
+      "nombre": "AMD Ryzen 5 5600X",
+      "marca": "AMD",
+      "precio": 200,
+      "stock": 12,
+      "rendimiento": 80
+    },
+    {
+      "id": 7,
+      "nombre": "AMD Ryzen 7 5800X",
+      "marca": "AMD",
+      "precio": 320,
+      "stock": 7,
+      "rendimiento": 95
+    },
+    {
+      "id": 8,
+      "nombre": "AMD Ryzen 9 5900X",
+      "marca": "AMD",
+      "precio": 480,
+      "stock": 4,
+      "rendimiento": 99
+    }
   ],
   "gpu": [
-    { "id": 1, "nombre": "NVIDIA GeForce GTX 1650", "marca": "NVIDIA", "precio": 150, "stock": 22, "rendimiento": 40 },
-    { "id": 2, "nombre": "NVIDIA GeForce GTX 1660 Super", "marca": "NVIDIA", "precio": 220, "stock": 16, "rendimiento": 60 },
-    { "id": 3, "nombre": "NVIDIA GeForce RTX 3060 Ti", "marca": "NVIDIA", "precio": 400, "stock": 8, "rendimiento": 82 },
-    { "id": 4, "nombre": "NVIDIA GeForce RTX 3070", "marca": "NVIDIA", "precio": 520, "stock": 6, "rendimiento": 90 },
-    { "id": 5, "nombre": "NVIDIA GeForce RTX 3080", "marca": "NVIDIA", "precio": 900, "stock": 4, "rendimiento": 97 },
-    { "id": 6, "nombre": "NVIDIA GeForce RTX 3090", "marca": "NVIDIA", "precio": 1500, "stock": 2, "rendimiento": 100 },
-    { "id": 7, "nombre": "AMD Radeon RX 6700 XT", "marca": "AMD", "precio": 420, "stock": 9, "rendimiento": 85 },
-    { "id": 8, "nombre": "AMD Radeon RX 6800", "marca": "AMD", "precio": 650, "stock": 5, "rendimiento": 95 }
+    {
+      "id": 1,
+      "nombre": "NVIDIA GeForce GTX 1650",
+      "marca": "NVIDIA",
+      "precio": 150,
+      "stock": 20,
+      "rendimiento": 40
+    },
+    {
+      "id": 2,
+      "nombre": "NVIDIA GeForce GTX 1660 Super",
+      "marca": "NVIDIA",
+      "precio": 220,
+      "stock": 16,
+      "rendimiento": 60
+    },
+    {
+      "id": 3,
+      "nombre": "NVIDIA GeForce RTX 3060 Ti",
+      "marca": "NVIDIA",
+      "precio": 400,
+      "stock": 7,
+      "rendimiento": 82
+    },
+    {
+      "id": 4,
+      "nombre": "NVIDIA GeForce RTX 3070",
+      "marca": "NVIDIA",
+      "precio": 520,
+      "stock": 6,
+      "rendimiento": 90
+    },
+    {
+      "id": 5,
+      "nombre": "NVIDIA GeForce RTX 3080",
+      "marca": "NVIDIA",
+      "precio": 900,
+      "stock": 4,
+      "rendimiento": 97
+    },
+    {
+      "id": 6,
+      "nombre": "NVIDIA GeForce RTX 3090",
+      "marca": "NVIDIA",
+      "precio": 1500,
+      "stock": 2,
+      "rendimiento": 100
+    },
+    {
+      "id": 7,
+      "nombre": "AMD Radeon RX 6700 XT",
+      "marca": "AMD",
+      "precio": 420,
+      "stock": 9,
+      "rendimiento": 85
+    },
+    {
+      "id": 8,
+      "nombre": "AMD Radeon RX 6800",
+      "marca": "AMD",
+      "precio": 650,
+      "stock": 5,
+      "rendimiento": 95
+    }
   ],
   "ram": [
-    { "id": 1, "nombre": "Corsair Vengeance LPX 16GB (2x8) DDR4-3200", "marca": "Corsair", "precio": 75, "stock": 25 },
-    { "id": 2, "nombre": "Kingston Fury Beast 32GB (2x16) DDR5-5600", "marca": "Kingston", "precio": 180, "stock": 12 },
-    { "id": 3, "nombre": "G.Skill Ripjaws V 16GB (2x8) DDR4-3600", "marca": "G.Skill", "precio": 85, "stock": 20 },
-    { "id": 4, "nombre": "Crucial Ballistix 8GB DDR4-2666", "marca": "Crucial", "precio": 35, "stock": 40 },
-    { "id": 5, "nombre": "Patriot Viper Steel 32GB (2x16) DDR4-4400", "marca": "Patriot", "precio": 160, "stock": 10 }
+    {
+      "id": 1,
+      "nombre": "Corsair Vengeance LPX 16GB (2x8) DDR4-3200",
+      "marca": "Corsair",
+      "precio": 75,
+      "stock": 25
+    },
+    {
+      "id": 2,
+      "nombre": "Kingston Fury Beast 32GB (2x16) DDR5-5600",
+      "marca": "Kingston",
+      "precio": 180,
+      "stock": 12
+    },
+    {
+      "id": 3,
+      "nombre": "G.Skill Ripjaws V 16GB (2x8) DDR4-3600",
+      "marca": "G.Skill",
+      "precio": 85,
+      "stock": 20
+    },
+    {
+      "id": 4,
+      "nombre": "Crucial Ballistix 8GB DDR4-2666",
+      "marca": "Crucial",
+      "precio": 35,
+      "stock": 40
+    },
+    {
+      "id": 5,
+      "nombre": "Patriot Viper Steel 32GB (2x16) DDR4-4400",
+      "marca": "Patriot",
+      "precio": 160,
+      "stock": 9
+    }
   ],
   "almacenamiento": [
-    { "id": 1, "nombre": "Samsung 980 PRO 1TB NVMe", "marca": "Samsung", "precio": 130, "stock": 18 },
-    { "id": 2, "nombre": "WD Blue SN570 1TB NVMe", "marca": "Western Digital", "precio": 95, "stock": 22 },
-    { "id": 3, "nombre": "Crucial MX500 1TB SATA", "marca": "Crucial", "precio": 90, "stock": 15 },
-    { "id": 4, "nombre": "Seagate Barracuda 2TB 7200RPM HDD", "marca": "Seagate", "precio": 55, "stock": 30 },
-    { "id": 5, "nombre": "Kingston NV2 500GB NVMe", "marca": "Kingston", "precio": 45, "stock": 28 },
-    { "id": 6, "nombre": "Samsung 870 EVO 500GB SATA", "marca": "Samsung", "precio": 60, "stock": 20 }
+    {
+      "id": 1,
+      "nombre": "Samsung 980 PRO 1TB NVMe",
+      "marca": "Samsung",
+      "precio": 130,
+      "stock": 18
+    },
+    {
+      "id": 2,
+      "nombre": "WD Blue SN570 1TB NVMe",
+      "marca": "Western Digital",
+      "precio": 95,
+      "stock": 21
+    },
+    {
+      "id": 3,
+      "nombre": "Crucial MX500 1TB SATA",
+      "marca": "Crucial",
+      "precio": 90,
+      "stock": 15
+    },
+    {
+      "id": 4,
+      "nombre": "Seagate Barracuda 2TB 7200RPM HDD",
+      "marca": "Seagate",
+      "precio": 55,
+      "stock": 30
+    },
+    {
+      "id": 5,
+      "nombre": "Kingston NV2 500GB NVMe",
+      "marca": "Kingston",
+      "precio": 45,
+      "stock": 28
+    },
+    {
+      "id": 6,
+      "nombre": "Samsung 870 EVO 500GB SATA",
+      "marca": "Samsung",
+      "precio": 60,
+      "stock": 19
+    }
   ],
   "psu": [
-    { "id": 1, "nombre": "EVGA 650W 80+ Bronze", "marca": "EVGA", "precio": 70, "stock": 14 },
-    { "id": 2, "nombre": "Corsair RM750x 750W 80+ Gold", "marca": "Corsair", "precio": 120, "stock": 9 },
-    { "id": 3, "nombre": "Seasonic S12III 550W 80+ Bronze", "marca": "Seasonic", "precio": 60, "stock": 18 },
-    { "id": 4, "nombre": "Cooler Master MWE 650W 80+ Bronze", "marca": "Cooler Master", "precio": 65, "stock": 12 }
+    {
+      "id": 1,
+      "nombre": "EVGA 650W 80+ Bronze",
+      "marca": "EVGA",
+      "precio": 70,
+      "stock": 14
+    },
+    {
+      "id": 2,
+      "nombre": "Corsair RM750x 750W 80+ Gold",
+      "marca": "Corsair",
+      "precio": 120,
+      "stock": 9
+    },
+    {
+      "id": 3,
+      "nombre": "Seasonic S12III 550W 80+ Bronze",
+      "marca": "Seasonic",
+      "precio": 60,
+      "stock": 18
+    },
+    {
+      "id": 4,
+      "nombre": "Cooler Master MWE 650W 80+ Bronze",
+      "marca": "Cooler Master",
+      "precio": 65,
+      "stock": 11
+    }
   ],
   "case": [
-    { "id": 1, "nombre": "Corsair 4000D Airflow", "marca": "Corsair", "precio": 95, "stock": 11 },
-    { "id": 2, "nombre": "NZXT H510", "marca": "NZXT", "precio": 75, "stock": 10 },
-    { "id": 3, "nombre": "Fractal Design Meshify C", "marca": "Fractal", "precio": 110, "stock": 6 },
-    { "id": 4, "nombre": "Cooler Master NR200", "marca": "Cooler Master", "precio": 90, "stock": 5 }
+    {
+      "id": 1,
+      "nombre": "Corsair 4000D Airflow",
+      "marca": "Corsair",
+      "precio": 95,
+      "stock": 11
+    },
+    {
+      "id": 2,
+      "nombre": "NZXT H510",
+      "marca": "NZXT",
+      "precio": 75,
+      "stock": 9
+    },
+    {
+      "id": 3,
+      "nombre": "Fractal Design Meshify C",
+      "marca": "Fractal",
+      "precio": 110,
+      "stock": 5
+    },
+    {
+      "id": 4,
+      "nombre": "Cooler Master NR200",
+      "marca": "Cooler Master",
+      "precio": 90,
+      "stock": 5
+    }
   ],
   "motherboard": [
-    { "id": 1, "nombre": "MSI B550M PRO-VDH WiFi", "marca": "MSI", "precio": 120, "stock": 20 },
-    { "id": 2, "nombre": "ASUS TUF Gaming B660-PLUS", "marca": "ASUS", "precio": 160, "stock": 12 },
-    { "id": 3, "nombre": "Gigabyte X570 AORUS Elite", "marca": "Gigabyte", "precio": 200, "stock": 8 }
+    {
+      "id": 1,
+      "nombre": "MSI B550M PRO-VDH WiFi",
+      "marca": "MSI",
+      "precio": 120,
+      "stock": 20
+    },
+    {
+      "id": 2,
+      "nombre": "ASUS TUF Gaming B660-PLUS",
+      "marca": "ASUS",
+      "precio": 160,
+      "stock": 12
+    },
+    {
+      "id": 3,
+      "nombre": "Gigabyte X570 AORUS Elite",
+      "marca": "Gigabyte",
+      "precio": 200,
+      "stock": 8
+    }
   ],
   "extras": [
-    { "id": 1, "nombre": "LG UltraGear 27GN950 27'' 4K 144Hz", "marca": "LG", "precio": 700, "stock": 5 },
-    { "id": 2, "nombre": "AOC 24G2 24'' 1080p 144Hz", "marca": "AOC", "precio": 170, "stock": 10 },
-    { "id": 3, "nombre": "Dell S2721DGF 27'' QHD 165Hz", "marca": "Dell", "precio": 330, "stock": 4 },
-    { "id": 1, "nombre": "Logitech G Pro X (teclado mecánico)", "marca": "Logitech", "precio": 130, "stock": 9 },
-    { "id": 2, "nombre": "Razer DeathAdder V2 (mouse)", "marca": "Razer", "precio": 50, "stock": 16 },
-    { "id": 3, "nombre": "HyperX Cloud II (audífonos)", "marca": "HyperX", "precio": 95, "stock": 7 }
+    {
+      "id": 1,
+      "nombre": "LG UltraGear 27GN950 27'' 4K 144Hz",
+      "marca": "LG",
+      "precio": 700,
+      "stock": 5
+    },
+    {
+      "id": 2,
+      "nombre": "AOC 24G2 24'' 1080p 144Hz",
+      "marca": "AOC",
+      "precio": 170,
+      "stock": 10
+    },
+    {
+      "id": 3,
+      "nombre": "Dell S2721DGF 27'' QHD 165Hz",
+      "marca": "Dell",
+      "precio": 330,
+      "stock": 4
+    },
+    {
+      "id": 1,
+      "nombre": "Logitech G Pro X (teclado mecánico)",
+      "marca": "Logitech",
+      "precio": 130,
+      "stock": 9
+    },
+    {
+      "id": 2,
+      "nombre": "Razer DeathAdder V2 (mouse)",
+      "marca": "Razer",
+      "precio": 50,
+      "stock": 16
+    },
+    {
+      "id": 3,
+      "nombre": "HyperX Cloud II (audífonos)",
+      "marca": "HyperX",
+      "precio": 95,
+      "stock": 7
+    }
   ]
 }

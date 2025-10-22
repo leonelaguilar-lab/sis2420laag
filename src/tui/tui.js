@@ -3,7 +3,7 @@ import * as p from '@clack/prompts'
 import chalk from 'chalk'
 import { readFileSync, writeFileSync, existsSync } from 'fs'
 
-const RUTA_INV = 'data/inventario.json'
+const RUTA_INV = '../../data/invtui.json'
 
 // Cargar inventario desde JSON
 function cargarInventario() {
