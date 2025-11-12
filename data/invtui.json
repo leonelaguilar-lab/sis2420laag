@@ -1,11 +1,5 @@
 [
   {
-    "nombre": "Intel Core i3-12100F",
-    "categoria": "CPU",
-    "precio": 850,
-    "stock": 10
-  },
-  {
     "nombre": "Intel Core i5-12400F",
     "categoria": "CPU",
     "precio": 1150,
