@@ -1,7 +1,8 @@
 import * as p from '@clack/prompts'
 import chalk from 'chalk'
 import stripAnsi from 'strip-ansi'
-import { readFileSync, writeFileSync, existsSync } from 'fs'
+import { readFileSync, writeFileSync, existsSync, mkdirSync, createWriteStream, appendFileSync } from 'fs'
+import PDFDocument from 'pdfkit'
 
 const RUTA_INV = '../../data/invtui.json'
 const CATEGORIAS_VALIDAS = ['cpu', 'gpu', 'ram', 'psu', 'case', 'otros']
@@ -15,7 +16,7 @@ const COLOR = {
   ACCENT: chalk.hex('#1E90FF').bold,
   SUCCESS: chalk.green.bold,
   ERROR: chalk.red.bold,
-  WARNING: chalk.hex('#FFD700').bold, 
+  WARNING: chalk.hex('#FFD700').bold,
   INFO: chalk.cyan,
   CATEGORY: chalk.hex('#FF6347'),
 }
@@ -49,14 +50,92 @@ async function esperarContinuar() {
   })
 }
 
+// --- Arte Ascii ---
+const asciiTienda = `
+██████ ██ ██████ ███  ██ ████▄  ▄████▄   ████▄  ██████   ▄█████ ▄████▄ ██▄  ▄██ █████▄ ▄████▄ ███  ██ ██████ ███  ██ ██████ ██████ ▄█████   ████▄  ██████   █████▄ ▄█████ 
+  ██   ██ ██▄▄   ██ ▀▄██ ██  ██ ██▄▄██   ██  ██ ██▄▄     ██     ██  ██ ██ ▀▀ ██ ██▄▄█▀ ██  ██ ██ ▀▄██ ██▄▄   ██ ▀▄██   ██   ██▄▄   ▀▀▀▄▄▄   ██  ██ ██▄▄     ██▄▄█▀ ██     
+  ██   ██ ██▄▄▄▄ ██   ██ ████▀  ██  ██   ████▀  ██▄▄▄▄   ▀█████ ▀████▀ ██    ██ ██     ▀████▀ ██   ██ ██▄▄▄▄ ██   ██   ██   ██▄▄▄▄ █████▀   ████▀  ██▄▄▄▄   ██     ▀█████ 
+`
+const asciicpu = `
+   _________  
+  |   ___   | 
+  |  |CPU|  | 
+  |_________| 
+     | |       
+
+`
+const asciigpu = `
+  __________________
+ |  ████████████   |
+ |  |  GPU  |███|  |
+ |_________________|
+
+`
+const asciiram = `
+ ________________________
+|██████ RAM ████████████|
+|_|_|_|_|_|_|_|_|_|_|_|_|
+
+`
+const asciipsu = `
+  ___________________
+ |  POWER SUPPLY     |
+ | [  PSU  650W  ]   |
+ |___________________|
+
+`
+const asciicase = `
+  _____________
+ |   _______   |
+ |  |       |  |
+ |  | CASE  |  |
+ |  |_______|  |
+ |_____________|
+
+`
+const asciiotros = `
+  _____________
+ |   VARIOS    |
+ |  ( •‿• )    |
+ |_____________|
+
+`
+
+const ASCII_CAT = {
+  cpu: asciicpu,
+  gpu: asciigpu,
+  ram: asciiram,
+  psu: asciipsu,
+  case: asciicase,
+  otros: asciiotros
+}
+
+// --- funciones visuales ---
+async function printAsciiSlow(ascii, delay = 12) {
+  console.clear()
+  for (const line of ascii.split('\n')) {
+    if (line.trim() === '') {
+      console.log('')
+    } else {
+      console.log(centerText(COLOR.MAIN(line)))
+    }
+    await new Promise(r => setTimeout(r, delay))
+  }
+}
+
+function barraPorcentaje(porcentaje, largo = 30) {
+  const llenos = Math.round((porcentaje / 100) * largo)
+  const vacios = largo - llenos
+  const bar = '█'.repeat(llenos) + chalk.gray('░'.repeat(vacios))
+  return COLOR.ACCENT('[' + bar + ']') + ' ' + COLOR.SUCCESS(porcentaje.toFixed(1) + '%')
+}
+
 // --- Menús Principales ---
 
 // Menú principal
 async function main() {
-  console.clear()
-  p.intro(centerText(COLOR.MAIN('========================================')))
-  p.intro(centerText(COLOR.MAIN('  TIENDA DE COMPONENTES DE PC  ')))
-  p.intro(centerText(COLOR.MAIN('========================================')))
+  await printAsciiSlow(asciiTienda, 6)
+  p.intro(centerText(COLOR.MAIN('=== BIENVENIDO A LA TIENDA DE COMPONENTES ===')))
 
   while (true) {
     const opcion = await p.select({
@@ -168,7 +247,7 @@ async function verCarrito() {
     if (carrito.length === 0) {
       console.log(chalk.gray('El carrito está vacío.'))
       await esperarContinuar()
-      return // Salir del loop para volver al menú de la tienda
+      return
     }
 
     let total = 0
@@ -188,7 +267,7 @@ async function verCarrito() {
 
     opcionesCarrito.push(
       { value: 'cuello', label: COLOR.INFO('  Calcular Cuello de Botella (CPU/GPU)') },
-      { value: 'finalizar', label: COLOR.SUCCESS('  FINALIZAR COMPRA') },
+      { value: 'finalizar', label: COLOR.SUCCESS('  FINALIZAR COMPRA (Generar factura PDF)') },
       { value: 'volver', label: COLOR.WARNING(' ↩ Volver a la Tienda') }
     )
 
@@ -200,15 +279,15 @@ async function verCarrito() {
     if (p.isCancel(opcion) || opcion === 'volver') return
 
     if (opcion === 'finalizar') {
-      p.note(COLOR.SUCCESS.bgGreen(`¡COMPRA COMPLETADA con un total de ${total.toFixed(2)} Bs! Vuelve pronto.`))
-      carrito = [] // Vaciar carrito
+      await generarFacturaPDF(carrito, total)
+      p.note(COLOR.SUCCESS.bgGreen(`¡COMPRA COMPLETADA con un total de ${total.toFixed(2)} Bs! Se generó la factura.`))
+      carrito = [] 
       await esperarContinuar()
       return
     }
     if (opcion === 'cuello') {
       await calcularCuelloBotella()
     } else if (!isNaN(parseInt(opcion))) {
-      // Eliminar artículo
       const indice = parseInt(opcion)
       const eliminado = carrito.splice(indice, 1)
       p.note(COLOR.ERROR(`Artículo eliminado: ${eliminado[0].nombre}`))
@@ -231,19 +310,19 @@ async function calcularCuelloBotella() {
     return
   }
 
-  const nivel_cpu = cpu.precio / 100
-  const nivel_gpu = gpu.precio / 100
+  const nivel_cpu = cpu.precio / 1000
+  const nivel_gpu = gpu.precio / 1000
 
   const diferencia = Math.abs(nivel_cpu - nivel_gpu)
-  let mensaje = ''
 
-  if (diferencia < 5) {
-    mensaje = COLOR.SUCCESS('¡Equilibrio excelente!') + ' La CPU y la GPU están bien emparejadas para una experiencia fluida.'
-  } else if (nivel_cpu > nivel_gpu) {
-    mensaje = COLOR.ERROR('Posible Cuello de Botella (GPU):') + ` El ${COLOR.MAIN(cpu.nombre)} (CPU) es más potente que el ${COLOR.MAIN(gpu.nombre)} (GPU). La GPU podría limitar el rendimiento.`
-  } else {
-    mensaje = COLOR.WARNING('Posible Cuello de Botella (CPU):') + ` El ${COLOR.MAIN(gpu.nombre)} (GPU) es más potente que el ${COLOR.MAIN(cpu.nombre)} (CPU). La CPU podría limitar el rendimiento.`
-  }
+  const pCPU = Math.min(100, nivel_cpu * 10)
+  const pGPU = Math.min(100, nivel_gpu * 10)
+
+  console.log(COLOR.ACCENT('\n:: Rendimiento estimado ::'))
+  console.log('CPU:', barraPorcentaje(pCPU))
+  console.log('GPU:', barraPorcentaje(pGPU) + '\n')
+
+  let mensaje = ''
 
   console.log(`CPU seleccionada: ${COLOR.ACCENT(cpu.nombre)}`)
   console.log(`GPU seleccionada: ${COLOR.ACCENT(gpu.nombre)}\n`)
@@ -254,8 +333,8 @@ async function calcularCuelloBotella() {
 
 // Función para seleccionar productos de una categoría y agregar al carrito
 async function comprarPorCategoria(categoria) {
-  console.clear()
-  p.intro(centerText(COLOR.CATEGORY(`--- COMPRAR ${categoria.toUpperCase()} ---`)))
+  const ascii = ASCII_CAT[categoria] || ''
+  await printAsciiSlow(ascii)
 
   const inventario = cargarInventario()
   const productosFiltrados = inventario.filter(p => p.categoria.toLowerCase() === categoria && p.stock > 0)
@@ -312,6 +391,48 @@ async function comprarPorCategoria(categoria) {
   p.note(COLOR.SUCCESS(`${cantidad}x ${productoSeleccionado.nombre} añadido al carrito.`))
 }
 // ----------------------------------------------------------------------------------
+
+// Generar factura PDF 
+async function generarFacturaPDF(carritoItems, total) {
+  try {
+    const dir = '../../data'
+    if (!existsSync(dir)) mkdirSync(dir)
+    const timestamp = Date.now()
+    const filename = `${dir}/factura_${timestamp}.pdf`
+
+    const doc = new PDFDocument({ margin: 40 })
+    const stream = createWriteStream(filename)
+    doc.pipe(stream)
+
+    doc.fontSize(20).text('FACTURA DE COMPRA', { align: 'center' })
+    doc.moveDown()
+    doc.fontSize(12).text(`Fecha: ${new Date().toLocaleString()}`)
+    doc.moveDown()
+
+    doc.fontSize(14).text('Detalle:')
+    doc.moveDown(0.5)
+
+    carritoItems.forEach(item => {
+      doc.fontSize(12).text(`${item.nombre} x${item.cantidad}  -  ${item.precio} Bs/u  =  ${ (item.precio * item.cantidad).toFixed(2) } Bs`)
+    })
+
+    doc.moveDown()
+    doc.fontSize(16).text(`TOTAL: ${total.toFixed(2)} Bs`, { align: 'right' })
+
+    doc.end()
+
+    await new Promise((resolve, reject) => {
+      stream.on('finish', resolve)
+      stream.on('error', reject)
+    })
+
+    p.note(COLOR.SUCCESS(`Factura generada: ${filename}`))
+    appendFileSync('ventas.log', `${new Date().toISOString()} | ${filename} | ${total.toFixed(2)} Bs\n`)
+  } catch (err) {
+    console.error(err)
+    p.note(COLOR.ERROR('Error al generar la factura.'))
+  }
+}
 
 // Agregar producto
 async function agregarProducto() {
