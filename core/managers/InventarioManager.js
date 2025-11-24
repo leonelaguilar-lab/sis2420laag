@@ -58,4 +58,16 @@ export class InventarioManager {
         inventario.splice(indice, 1);
         this.repo.guardarTodos(inventario);
     }
+
+    obtenerPorId(id) {
+        return this.repo.obtenerPorId(id);
+    }
+
+    actualizarStock(id, cantidad) {
+        const producto = this.repo.obtenerPorId(id);
+        if (!producto) {
+            throw new Error(`Producto con ID ${id} no encontrado.`);
+        }
+        this.repo.actualizarStock(id, cantidad);
+    }
 }

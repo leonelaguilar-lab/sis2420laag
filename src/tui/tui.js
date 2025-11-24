@@ -1,510 +1,390 @@
-import * as p from '@clack/prompts'
-import chalk from 'chalk'
-import stripAnsi from 'strip-ansi'
-import { readFileSync, writeFileSync, existsSync, mkdirSync, createWriteStream, appendFileSync } from 'fs'
-import PDFDocument from 'pdfkit'
+// index.js (TUI Refactorizado)
+import * as p from '@clack/prompts';
+import chalk from 'chalk';
+import stripAnsi from 'strip-ansi';
 
-const RUTA_INV = '../../data/invtui.json'
-const CATEGORIAS_VALIDAS = ['cpu', 'gpu', 'ram', 'psu', 'case', 'otros']
+// Importamos el Core (Modelos, Managers, Repositorios)
+import { Producto } from '../../core/models/Producto.js';
+import { InventarioRepositorioSqlite } from '../../core/data/InventarioRepositorioSqlite.js';
+import { InventarioManager } from '../../core/managers/InventarioManager.js';
+import { CarritoManager } from '../../core/managers/CarritoManager.js'
 
-let carrito = [] // Carrito de compras global
+// Importamos las librerías necesarias para la VISTA (PDF, LOGs)
+import { existsSync, mkdirSync, createWriteStream, appendFileSync } from 'fs'; // Solo se mantiene para la factura/logs
+import PDFDocument from 'pdfkit';
 
-// --- Estilos TUI---
+// --- ARQUITECTURA Y GESTORES ---
 
+// 1. Inicializar el Repositorio (Capa de Persistencia)
+const inventarioRepo = new InventarioRepositorioSqlite();
+
+// 2. Inicializar el Manager (Lógica de Negocio)
+const gestorInventario = new InventarioManager(inventarioRepo);
+
+// 3. Carrito de compras global (Lógica de Carrito aún en el TUI por simplicidad,
+//    idealmente sería un CarritoManager, pero lo manejamos aquí por ahora)
+const gestorCarrito = new CarritoManager();
+
+const CATEGORIAS_VALIDAS = ['cpu', 'gpu', 'ram', 'psu', 'case', 'otros'];
+
+// --- UTILIDADES ---
 const COLOR = {
-  MAIN: chalk.hex('#8A2BE2').bold,
-  ACCENT: chalk.hex('#1E90FF').bold,
-  SUCCESS: chalk.green.bold,
-  ERROR: chalk.red.bold,
-  WARNING: chalk.hex('#FFD700').bold,
-  INFO: chalk.cyan,
-  CATEGORY: chalk.hex('#FF6347'),
+    ERROR: chalk.red,
+    SUCCESS: chalk.green,
+    WARNING: chalk.yellow,
+    INFO: chalk.cyan,
+    ACCENT: chalk.magenta,
+    MAIN: chalk.white,
+    CATEGORY: chalk.blue,
+    BG_MAGENTA: chalk.bgMagenta.white,
+};
+
+function centerText(text, width = process.stdout.columns) {
+    const strippedText = stripAnsi(text);
+    const padding = Math.max(0, Math.floor((width - strippedText.length) / 2));
+    return ' '.repeat(padding) + text;
 }
 
-// Función para centrar texto
-function centerText(text, width = process.stdout.columns) {
-  const padding = Math.floor((width - stripAnsi(text).length) / 2)
-  return ' '.repeat(Math.max(0, padding)) + text
+async function esperarContinuar() {
+    await p.text({ 
+        message: 'Presiona ENTER para continuar...',
+        placeholder: '...'
+    });
 }
+
+function barraPorcentaje(p) {
+    const llenas = Math.round(p / 5);
+    const vacias = 20 - llenas;
+    return `[${'█'.repeat(llenas)}${'-'.repeat(vacias)}] ${p.toFixed(0)}%`;
+}
+
 
 // --- Funciones de Gestión de Inventario ---
-
-// Cargar inventario desde JSON
-function cargarInventario() {
-  if (!existsSync(RUTA_INV)) writeFileSync(RUTA_INV, '[]')
-  return JSON.parse(readFileSync(RUTA_INV, 'utf8'))
-}
-
-// Guardar inventario en JSON
-function guardarInventario(data) {
-  writeFileSync(RUTA_INV, JSON.stringify(data, null, 2))
-}
-
-// --- Pausa TUI ---
-async function esperarContinuar() {
-  await p.note(COLOR.INFO('Presiona Enter para continuar...'))
-  await p.select({
-    message: ' ',
-    options: [{ value: 'continuar', label: 'Continuar' }],
-    initialValue: 'continuar'
-  })
-}
-
-// --- Arte Ascii ---
-const asciiTienda = `
-██████ ██ ██████ ███  ██ ████▄  ▄████▄   ████▄  ██████   ▄█████ ▄████▄ ██▄  ▄██ █████▄ ▄████▄ ███  ██ ██████ ███  ██ ██████ ██████ ▄█████   ████▄  ██████   █████▄ ▄█████ 
-  ██   ██ ██▄▄   ██ ▀▄██ ██  ██ ██▄▄██   ██  ██ ██▄▄     ██     ██  ██ ██ ▀▀ ██ ██▄▄█▀ ██  ██ ██ ▀▄██ ██▄▄   ██ ▀▄██   ██   ██▄▄   ▀▀▀▄▄▄   ██  ██ ██▄▄     ██▄▄█▀ ██     
-  ██   ██ ██▄▄▄▄ ██   ██ ████▀  ██  ██   ████▀  ██▄▄▄▄   ▀█████ ▀████▀ ██    ██ ██     ▀████▀ ██   ██ ██▄▄▄▄ ██   ██   ██   ██▄▄▄▄ █████▀   ████▀  ██▄▄▄▄   ██     ▀█████ 
-`
-const asciicpu = `
-   _________  
-  |   ___   | 
-  |  |CPU|  | 
-  |_________| 
-     | |       
-
-`
-const asciigpu = `
-  __________________
- |  ████████████   |
- |  |  GPU  |███|  |
- |_________________|
-
-`
-const asciiram = `
- ________________________
-|██████ RAM ████████████|
-|_|_|_|_|_|_|_|_|_|_|_|_|
-
-`
-const asciipsu = `
-  ___________________
- |  POWER SUPPLY     |
- | [  PSU  650W  ]   |
- |___________________|
-
-`
-const asciicase = `
-  _____________
- |   _______   |
- |  |       |  |
- |  | CASE  |  |
- |  |_______|  |
- |_____________|
-
-`
-const asciiotros = `
-  _____________
- |   VARIOS    |
- |  ( •‿• )    |
- |_____________|
-
-`
-
-const ASCII_CAT = {
-  cpu: asciicpu,
-  gpu: asciigpu,
-  ram: asciiram,
-  psu: asciipsu,
-  case: asciicase,
-  otros: asciiotros
-}
-
-// --- funciones visuales ---
-async function printAsciiSlow(ascii, delay = 12) {
-  console.clear()
-  for (const line of ascii.split('\n')) {
-    if (line.trim() === '') {
-      console.log('')
-    } else {
-      console.log(centerText(COLOR.MAIN(line)))
-    }
-    await new Promise(r => setTimeout(r, delay))
-  }
-}
-
-function barraPorcentaje(porcentaje, largo = 30) {
-  const llenos = Math.round((porcentaje / 100) * largo)
-  const vacios = largo - llenos
-  const bar = '█'.repeat(llenos) + chalk.gray('░'.repeat(vacios))
-  return COLOR.ACCENT('[' + bar + ']') + ' ' + COLOR.SUCCESS(porcentaje.toFixed(1) + '%')
-}
-
-// --- Menús Principales ---
-
-// Menú principal
-async function main() {
-  await printAsciiSlow(asciiTienda, 6)
-  p.intro(centerText(COLOR.MAIN('=== BIENVENIDO A LA TIENDA DE COMPONENTES ===')))
-
-  while (true) {
-    const opcion = await p.select({
-      message: COLOR.ACCENT(':: SELECCIONA UNA OPCIÓN ::'),
-      options: [
-        { value: 'tienda', label: '  TIENDA (Comprar y ver Carrito)' },
-        { value: 'gestion', label: '  GESTIÓN DE TIENDA (Inventario)' },
-        { value: 'salir', label: COLOR.ERROR('  SALIR') }
-      ]
-    })
-
-    if (p.isCancel(opcion) || opcion === 'salir') break
-    if (opcion === 'tienda') await menuTienda()
-    if (opcion === 'gestion') await menuGestion()
-  }
-
-  p.outro(COLOR.SUCCESS('¡GRACIAS POR USAR LA APLICACIÓN!'))
-}
-// ----------------------------------------------------------------------------------
-
-// Menú de Gestión de Tienda (Inventario)
-async function menuGestion() {
-  while (true) {
-    console.clear()
-    p.intro(centerText(COLOR.WARNING('=== MÓDULO DE GESTIÓN DE TIENDA ===')))
-
-    const opcion = await p.select({
-      message: COLOR.ACCENT(':: Elige una acción de inventario ::'),
-      options: [
-        { value: 'ver', label: ' Ver inventario completo' },
-        { value: 'agregar', label: COLOR.SUCCESS(' Agregar producto') },
-        { value: 'eliminar', label: COLOR.ERROR(' Eliminar producto') },
-        { value: 'volver', label: COLOR.INFO(' Volver al menú principal') }
-      ]
-    })
-
-    if (opcion === 'volver' || p.isCancel(opcion)) break
-
-    switch (opcion) {
-      case 'ver':
-        await mostrarTodosProductos()
-        break
-      case 'agregar':
-        await agregarProducto()
-        break
-      case 'eliminar':
-        await eliminarProducto()
-        break
-    }
-  }
-}
-// ----------------------------------------------------------------------------------
-
-// Menú de Tienda
-async function menuTienda() {
-  while (true) {
-    console.clear()
-    p.intro(centerText(COLOR.MAIN('=== MÓDULO DE COMPRAS ===')))
-
-    const categorias = CATEGORIAS_VALIDAS.map(c => ({
-      value: c,
-      label: COLOR.CATEGORY(`  Comprar ${c.toUpperCase()}`)
-    }))
-
-    const opcion = await p.select({
-      message: COLOR.ACCENT(':: ¿Qué deseas hacer? ::'),
-      options: [
-        { value: 'carrito', label: COLOR.WARNING(' Ver y gestionar Carrito de Compras') },
-        ...categorias,
-        { value: 'volver', label: COLOR.INFO(' ↩ Volver al menú principal') }
-      ]
-    })
-
-    if (opcion === 'volver' || p.isCancel(opcion)) break
-    if (opcion === 'carrito') {
-      await verCarrito()
-    } else if (CATEGORIAS_VALIDAS.includes(opcion)) {
-      await comprarPorCategoria(opcion)
-    }
-  }
-}
-// ----------------------------------------------------------------------------------
-
-// --- Funciones de la Tienda ---
-
 // Muestra la lista completa de productos
 async function mostrarTodosProductos() {
-  const inventario = cargarInventario()
-  console.clear()
-  p.intro(centerText(COLOR.WARNING('--- INVENTARIO COMPLETO ---')))
-  if (inventario.length === 0) {
-    console.log(chalk.gray('No hay productos registrados en el inventario.'))
-    await esperarContinuar()
-    return
-  }
-
-  inventario.forEach((prod, i) => {
-    console.log(`${COLOR.INFO(i + 1)}. ${COLOR.MAIN(prod.nombre)} - ${COLOR.CATEGORY(prod.categoria.toUpperCase())} - ${COLOR.WARNING(prod.precio)} Bs (${COLOR.SUCCESS(prod.stock)} uds)`)
-  })
-  await esperarContinuar()
-}
-
-// Función para ver y gestionar el carrito
-async function verCarrito() {
-  while (true) {
-    console.clear()
-    p.intro(centerText(COLOR.WARNING('---  CARRITO DE COMPRAS ---')))
-
-    if (carrito.length === 0) {
-      console.log(chalk.gray('El carrito está vacío.'))
-      await esperarContinuar()
-      return
+    // 💡 Llama al Manager (Controlador) para obtener los datos
+    const inventario = gestorInventario.obtenerTodos(); 
+    
+    console.clear();
+    p.intro(centerText(COLOR.WARNING('--- INVENTARIO COMPLETO ---')));
+    
+    if (inventario.length === 0) {
+        console.log(chalk.gray('No hay productos registrados en el inventario.'));
+        await esperarContinuar();
+        return;
     }
 
-    let total = 0
-    const opcionesCarrito = []
-
-    carrito.forEach((item, i) => {
-      const subtotal = item.precio * item.cantidad
-      total += subtotal
-      const label = `${COLOR.INFO(i + 1)}. ${COLOR.MAIN(item.nombre)} x${item.cantidad} (${item.precio} Bs/u) = ${COLOR.SUCCESS(subtotal.toFixed(2))} Bs`
-      console.log(label)
-      opcionesCarrito.push({ value: i.toString(), label: COLOR.ERROR(`  Eliminar ${item.nombre}`) })
-    })
-
-    console.log(COLOR.ACCENT('\n--- RESUMEN ---'))
-    console.log(`${COLOR.ACCENT('TOTAL A PAGAR:')} ${COLOR.SUCCESS.bold(total.toFixed(2))} Bs`)
-    console.log(COLOR.ACCENT('-----------------\n'))
-
-    opcionesCarrito.push(
-      { value: 'cuello', label: COLOR.INFO('  Calcular Cuello de Botella (CPU/GPU)') },
-      { value: 'finalizar', label: COLOR.SUCCESS('  FINALIZAR COMPRA (Generar factura PDF)') },
-      { value: 'volver', label: COLOR.WARNING(' ↩ Volver a la Tienda') }
-    )
-
-    const opcion = await p.select({
-      message: COLOR.ACCENT(':: Opciones del Carrito ::'),
-      options: opcionesCarrito
-    })
-
-    if (p.isCancel(opcion) || opcion === 'volver') return
-
-    if (opcion === 'finalizar') {
-      await generarFacturaPDF(carrito, total)
-      p.note(COLOR.SUCCESS.bgGreen(`¡COMPRA COMPLETADA con un total de ${total.toFixed(2)} Bs! Se generó la factura.`))
-      carrito = [] 
-      await esperarContinuar()
-      return
-    }
-    if (opcion === 'cuello') {
-      await calcularCuelloBotella()
-    } else if (!isNaN(parseInt(opcion))) {
-      const indice = parseInt(opcion)
-      const eliminado = carrito.splice(indice, 1)
-      p.note(COLOR.ERROR(`Artículo eliminado: ${eliminado[0].nombre}`))
-    }
-  }
-}
-// ----------------------------------------------------------------------------------
-
-// Cálculo de cuello de botella
-async function calcularCuelloBotella() {
-  console.clear()
-  p.intro(centerText(COLOR.INFO('---  CÁLCULO DE CUELLO DE BOTELLA ---')))
-
-  const cpu = carrito.find(item => item.categoria === 'cpu')
-  const gpu = carrito.find(item => item.categoria === 'gpu')
-
-  if (!cpu || !gpu) {
-    console.log(COLOR.WARNING('Necesitas tener una CPU y una GPU en el carrito para esta estimación.'))
-    await esperarContinuar()
-    return
-  }
-
-  const nivel_cpu = cpu.precio / 1000
-  const nivel_gpu = gpu.precio / 1000
-
-  const diferencia = Math.abs(nivel_cpu - nivel_gpu)
-
-  const pCPU = Math.min(100, nivel_cpu * 10)
-  const pGPU = Math.min(100, nivel_gpu * 10)
-
-  console.log(COLOR.ACCENT('\n:: Rendimiento estimado ::'))
-  console.log('CPU:', barraPorcentaje(pCPU))
-  console.log('GPU:', barraPorcentaje(pGPU) + '\n')
-
-  let mensaje = ''
-
-  console.log(`CPU seleccionada: ${COLOR.ACCENT(cpu.nombre)}`)
-  console.log(`GPU seleccionada: ${COLOR.ACCENT(gpu.nombre)}\n`)
-  console.log(mensaje)
-  await esperarContinuar()
-}
-// ----------------------------------------------------------------------------------
-
-// Función para seleccionar productos de una categoría y agregar al carrito
-async function comprarPorCategoria(categoria) {
-  const ascii = ASCII_CAT[categoria] || ''
-  await printAsciiSlow(ascii)
-
-  const inventario = cargarInventario()
-  const productosFiltrados = inventario.filter(p => p.categoria.toLowerCase() === categoria && p.stock > 0)
-
-  if (productosFiltrados.length === 0) {
-    console.log(chalk.gray(`No hay productos de la categoría ${categoria.toUpperCase()} en stock.`))
-    await esperarContinuar()
-    return
-  }
-
-  const opciones = productosFiltrados.map((p, i) => ({
-    value: i,
-    label: `${p.nombre} - ${COLOR.WARNING(p.precio)} Bs (${COLOR.SUCCESS(p.stock)} uds en stock)`
-  }))
-
-  opciones.push({ value: 'regresar', label: COLOR.INFO(' ↩️ Regresar al menú de la Tienda') })
-
-  const indiceSeleccionado = await p.select({
-    message: COLOR.ACCENT(`:: Selecciona un ${categoria} ::`),
-    options: opciones
-  })
-
-  if (p.isCancel(indiceSeleccionado) || indiceSeleccionado === 'regresar') return
-
-  const productoSeleccionado = productosFiltrados[indiceSeleccionado]
-
-  const cantidadRaw = await p.text({
-    message: COLOR.ACCENT(`¿Cuántas unidades de ${productoSeleccionado.nombre} quieres? (Max: ${productoSeleccionado.stock})`),
-    validate: (value) => {
-      const num = parseInt(value)
-      if (isNaN(num) || num <= 0) return COLOR.ERROR('Debe ser un número mayor a 0.')
-      if (num > productoSeleccionado.stock) return COLOR.ERROR(`Máximo disponible: ${productoSeleccionado.stock}.`)
-      return undefined
-    }
-  })
-
-  if (p.isCancel(cantidadRaw)) return
-
-  const cantidad = parseInt(cantidadRaw)
-
-  // Agregar al carrito
-  const indiceCarrito = carrito.findIndex(item => item.nombre === productoSeleccionado.nombre)
-  if (indiceCarrito !== -1) {
-    carrito[indiceCarrito].cantidad += cantidad
-  } else {
-    carrito.push({
-      nombre: productoSeleccionado.nombre,
-      categoria: productoSeleccionado.categoria.toLowerCase(),
-      precio: productoSeleccionado.precio,
-      cantidad: cantidad
-    })
-  }
-
-  p.note(COLOR.SUCCESS(`${cantidad}x ${productoSeleccionado.nombre} añadido al carrito.`))
-}
-// ----------------------------------------------------------------------------------
-
-// Generar factura PDF 
-async function generarFacturaPDF(carritoItems, total) {
-  try {
-    const dir = '../../data'
-    if (!existsSync(dir)) mkdirSync(dir)
-    const timestamp = Date.now()
-    const filename = `${dir}/factura_${timestamp}.pdf`
-
-    const doc = new PDFDocument({ margin: 40 })
-    const stream = createWriteStream(filename)
-    doc.pipe(stream)
-
-    doc.fontSize(20).text('FACTURA DE COMPRA', { align: 'center' })
-    doc.moveDown()
-    doc.fontSize(12).text(`Fecha: ${new Date().toLocaleString()}`)
-    doc.moveDown()
-
-    doc.fontSize(14).text('Detalle:')
-    doc.moveDown(0.5)
-
-    carritoItems.forEach(item => {
-      doc.fontSize(12).text(`${item.nombre} x${item.cantidad}  -  ${item.precio} Bs/u  =  ${ (item.precio * item.cantidad).toFixed(2) } Bs`)
-    })
-
-    doc.moveDown()
-    doc.fontSize(16).text(`TOTAL: ${total.toFixed(2)} Bs`, { align: 'right' })
-
-    doc.end()
-
-    await new Promise((resolve, reject) => {
-      stream.on('finish', resolve)
-      stream.on('error', reject)
-    })
-
-    p.note(COLOR.SUCCESS(`Factura generada: ${filename}`))
-    appendFileSync('ventas.log', `${new Date().toISOString()} | ${filename} | ${total.toFixed(2)} Bs\n`)
-  } catch (err) {
-    console.error(err)
-    p.note(COLOR.ERROR('Error al generar la factura.'))
-  }
+    // El resto es lógica de presentación (Vista)
+    inventario.forEach((prod, i) => {
+        console.log(`${COLOR.INFO(i + 1)}. ${COLOR.MAIN(prod.nombre)} - ${COLOR.CATEGORY(prod.categoria.toUpperCase())} - ${COLOR.WARNING(prod.precio)} Bs (${COLOR.SUCCESS(prod.stock)} uds)`);
+    });
+    await esperarContinuar();
 }
 
 // Agregar producto
 async function agregarProducto() {
-  console.clear()
-  p.intro(centerText(COLOR.SUCCESS('--- AGREGAR NUEVO PRODUCTO ---')))
+    console.clear();
+    p.intro(centerText(COLOR.SUCCESS('--- AGREGAR NUEVO PRODUCTO ---')));
 
-  const nombre = await p.text({ message: COLOR.ACCENT('Nombre del producto:') })
-  if (p.isCancel(nombre) || !nombre) return
+    // --- Lógica de Vista (Recolección de datos) ---
+    const nombre = await p.text({
+        message: COLOR.ACCENT('Nombre del producto:'), 
+        validate: (v) => v.trim().length === 0 ? COLOR.ERROR('El nombre no puede estar vacío.') : undefined 
+    });
+    if (p.isCancel(nombre) || !nombre) return;
 
-  const categoria = await p.select({
-    message: COLOR.ACCENT('Categoría:'),
-    options: CATEGORIAS_VALIDAS.map(c => ({ value: c, label: c.toUpperCase() }))
-  })
-  if (p.isCancel(categoria)) return
+    const categoria = await p.select({
+        message: COLOR.ACCENT('Categoría:'),
+        options: CATEGORIAS_VALIDAS.map(c => ({ value: c, label: c.toUpperCase() }))
+    });
+    if (p.isCancel(categoria)) return;
 
-  const precioRaw = await p.text({
-    message: COLOR.ACCENT('Precio (en Bs):'),
-    validate: (value) => {
-      const num = parseFloat(value)
-      if (isNaN(num) || num <= 0) return COLOR.ERROR('Debe ser un número positivo.')
-      return undefined
+    const precioRaw = await p.text({
+        message: COLOR.ACCENT('Precio (en Bs):'),
+        validate: (value) => {
+            const num = parseFloat(value);
+            // Usamos las validaciones definidas en el modelo/manager
+            if (isNaN(num) || num <= 0) return COLOR.ERROR('Debe ser un número positivo.');
+            return undefined;
+        }
+    });
+    if (p.isCancel(precioRaw)) return;
+
+    const stockRaw = await p.text({
+        message: COLOR.ACCENT('Cantidad en stock:'),
+        validate: (value) => {
+            const num = parseInt(value);
+            if (isNaN(num) || num < 0) return COLOR.ERROR('Debe ser un número entero no negativo.');
+            return undefined;
+        }
+    });
+    if (p.isCancel(stockRaw)) return;
+
+    // --- Lógica de Controlador (Llamada al Manager) ---
+    try {
+        gestorInventario.agregarProducto(
+            nombre.trim(),
+            categoria,
+            parseFloat(precioRaw),
+            parseInt(stockRaw)
+        );
+        p.note(COLOR.SUCCESS(`Producto "${nombre}" agregado correctamente a SQLite.`));
+    } catch (e) {
+        p.note(COLOR.ERROR(`Error al guardar: ${e.message}`));
     }
-  })
-  if (p.isCancel(precioRaw)) return
-
-  const stockRaw = await p.text({
-    message: COLOR.ACCENT('Cantidad en stock:'),
-    validate: (value) => {
-      const num = parseInt(value)
-      if (isNaN(num) || num < 0) return COLOR.ERROR('Debe ser un número entero no negativo.')
-      return undefined
-    }
-  })
-  if (p.isCancel(stockRaw)) return
-
-  const inventario = cargarInventario()
-  inventario.push({
-    nombre: nombre,
-    categoria: categoria,
-    precio: parseFloat(precioRaw),
-    stock: parseInt(stockRaw)
-  })
-  guardarInventario(inventario)
-
-  p.note(COLOR.SUCCESS('Producto agregado correctamente.'))
 }
 
 // Eliminar producto
 async function eliminarProducto() {
-  console.clear()
-  p.intro(centerText(COLOR.ERROR('--- ELIMINAR PRODUCTO ---')))
-  const inventario = cargarInventario()
-  if (inventario.length === 0) {
-    p.note('No hay productos para eliminar.')
-    return
-  }
+    console.clear();
+    p.intro(centerText(COLOR.ERROR('--- ELIMINAR PRODUCTO ---')));
+    
+    // 💡 Llama al Manager (Controlador) para obtener los datos
+    const inventario = gestorInventario.obtenerTodos(); 
+    
+    if (inventario.length === 0) {
+        p.note('No hay productos para eliminar.');
+        return;
+    }
 
-  const opciones = inventario.map((p, i) => ({
-    value: i,
-    label: `${p.nombre} (${p.categoria.toUpperCase()}) - ${p.stock} uds`
-  }))
+    const opciones = inventario.map((p) => ({
+        // Usamos el ID del Modelo Producto para identificar de forma única
+        value: p.id, 
+        label: `${p.nombre} (${p.categoria.toUpperCase()}) - ${p.stock} uds`
+    }));
 
-  const indice = await p.select({
-    message: COLOR.ACCENT('Selecciona el producto a eliminar:'),
-    options: opciones
-  })
-  if (p.isCancel(indice)) return
+    const idSeleccionado = await p.select({
+        message: COLOR.ACCENT('Selecciona el producto a eliminar:'),
+        options: opciones
+    });
+    if (p.isCancel(idSeleccionado)) return;
 
-  const eliminado = inventario.splice(indice, 1)
-  guardarInventario(inventario)
-  p.note(COLOR.ERROR(`Producto eliminado: ${eliminado[0].nombre}`))
+    // --- Lógica de Controlador (Llamada al Manager) ---
+    try {
+        const nombreEliminado = inventario.find(p => p.id === idSeleccionado).nombre;
+        gestorInventario.eliminarProducto(idSeleccionado);
+        p.note(COLOR.ERROR(`Producto eliminado: ${nombreEliminado}`));
+    } catch (e) {
+        p.note(COLOR.ERROR(`Error al eliminar: ${e.message}`));
+    }
 }
 
+// Función para seleccionar productos de una categoría y agregar al carrito
+async function comprarPorCategoria(categoria) {
+    console.clear();
+    p.intro(centerText(COLOR.SUCCESS(`--- COMPRAR ${categoria.toUpperCase()} ---`)));
 
-main()
+    const productos = gestorInventario.obtenerTodos();
+    const productosFiltrados = productos.filter(p => p.categoria === categoria && p.stock > 0);
+
+    if (productosFiltrados.length === 0) {
+        p.note(COLOR.WARNING(`No hay stock de ${categoria.toUpperCase()} por el momento.`));
+        await esperarContinuar();
+        return;
+    }
+
+    const opciones = productosFiltrados.map((p, i) => ({
+        value: i,
+        label: `${p.nombre} - ${p.precio} Bs (${p.stock} uds)`
+    }));
+    
+    opciones.push({ value: 'volver', label: '↩️ Volver al menú anterior' });
+
+    const indiceSeleccionado = await p.select({
+        message: 'Selecciona un producto:',
+        options: opciones
+    });
+
+    if (p.isCancel(indiceSeleccionado) || indiceSeleccionado === 'volver') return;
+
+    const productoSeleccionado = productosFiltrados[indiceSeleccionado];
+
+    const cantidadRaw = await p.text({
+        message: `¿Cuántas unidades de ${productoSeleccionado.nombre} quieres? (Max: ${productoSeleccionado.stock})`,
+        validate: (v) => {
+            const num = parseInt(v);
+            if (isNaN(num) || num <= 0) return 'Debe ser un número positivo.';
+            if (num > productoSeleccionado.stock) return `Stock insuficiente. Máximo: ${productoSeleccionado.stock}`;
+            return undefined;
+        }
+    });
+
+    if (p.isCancel(cantidadRaw)) return;
+
+    const cantidad = parseInt(cantidadRaw);
+
+    try {
+        gestorCarrito.agregarItem(productoSeleccionado, cantidad);
+        p.note(COLOR.SUCCESS(`${cantidad}x ${productoSeleccionado.nombre} añadido al carrito.`));
+    } catch (e) {
+        p.note(COLOR.ERROR(`No se pudo añadir al carrito: ${e.message}`));
+    }
+}
+
+// Funcion para ver el carrito
+async function verCarrito() {
+    while (true) {
+        console.clear();
+        p.intro(centerText(COLOR.WARNING('---  CARRITO DE COMPRAS ---')));
+
+        const items = gestorCarrito.obtenerItems();
+        const total = gestorCarrito.calcularTotal();
+
+        if (items.length === 0) {
+            console.log(chalk.gray('El carrito está vacío.'));
+            await esperarContinuar();
+            return;
+        }
+
+        const opcionesCarrito = [];
+        items.forEach((item, i) => {
+            const subtotal = item.getSubtotal();
+            const label = `${COLOR.INFO(i + 1)}. ${COLOR.MAIN(item.nombre)} x${item.cantidad} (${item.precio} Bs/u) = ${COLOR.SUCCESS(subtotal.toFixed(2))} Bs`;
+            console.log(label);
+            opcionesCarrito.push({ value: i.toString(), label: COLOR.ERROR(`  Eliminar ${item.nombre}`) });
+        });
+        
+        console.log('---------------------------------');
+        console.log(`TOTAL: ${COLOR.SUCCESS.bold(total.toFixed(2) + ' Bs')}`);
+        console.log('---------------------------------');
+
+        opcionesCarrito.push({ value: 'cuello', label: '🔬 Analizar Cuello de Botella' });
+        opcionesCarrito.push({ value: 'finalizar', label: '✅ Finalizar Compra' });
+        opcionesCarrito.push({ value: 'volver', label: '↩️ Volver al menú principal' });
+
+        const opcion = await p.select({
+            message: '¿Qué quieres hacer?',
+            options: opcionesCarrito
+        });
+
+
+        if (p.isCancel(opcion) || opcion === 'volver') return;
+
+        if (opcion === 'finalizar') {
+            await finalizarCompra(items, total); 
+            return;
+        }
+        if (opcion === 'cuello') {
+            await calcularCuelloBotellaTUI();
+        } else if (!isNaN(parseInt(opcion))) {
+            const indice = parseInt(opcion);
+            const eliminado = gestorCarrito.eliminarItem(indice);
+            p.note(COLOR.ERROR(`Artículo eliminado: ${eliminado.nombre}`));
+        }
+    }
+}
+
+// Funcion para calcular el cuello de botella
+async function calcularCuelloBotellaTUI() {
+    console.clear();
+    p.intro(centerText(COLOR.INFO('---  CÁLCULO DE CUELLO DE BOTELLA ---')));
+
+    const resultado = gestorCarrito.calcularCuelloBotella();
+
+    if (!resultado.cpu || !resultado.gpu) {
+        console.log(COLOR.WARNING('Necesitas tener una CPU y una GPU en el carrito para esta estimación.'));
+        await esperarContinuar();
+        return;
+    }
+
+    console.log(COLOR.ACCENT('\n:: Rendimiento estimado ::'));
+    console.log('CPU:', barraPorcentaje(resultado.cpu.potencia));
+    console.log('GPU:', barraPorcentaje(resultado.gpu.potencia) + '\n');
+
+    console.log(`CPU seleccionada: ${COLOR.ACCENT(resultado.cpu.nombre)}`);
+    console.log(`GPU seleccionada: ${COLOR.ACCENT(resultado.gpu.nombre)}\n`);
+    console.log(resultado.esCuello ? COLOR.ERROR.bold(resultado.mensaje) : COLOR.SUCCESS.bold(resultado.mensaje));
+    await esperarContinuar();
+}
+// Funcion para finalizar la compra
+async function finalizarCompra(items, total) {
+    try {
+        // --- 1. Lógica de negocio: Actualizar Stock en SQLite ---
+        for (const item of items) {
+            gestorInventario.repo.actualizarStock(item.id, -item.cantidad);
+        }
+
+        // --- 2. Lógica de Vista/Reporte: Generar Factura ---
+        // await generarFacturaPDF(items, total); // Comentado para simplificar
+
+        // --- 3. Lógica de negocio: Vaciar Carrito ---
+        gestorCarrito.vaciarCarrito();
+
+        p.note(COLOR.SUCCESS.bgGreen(`¡COMPRA COMPLETADA con un total de ${total.toFixed(2)} Bs! Se actualizó el stock.`));
+        await esperarContinuar();
+        
+    } catch (error) {
+        p.note(COLOR.ERROR(`ERROR en la finalización de la compra. Stock no actualizado: ${error.message}`));
+        await esperarContinuar();
+    }
+}
+
+// --- Flujo Principal de la Aplicación (TUI) ---
+async function mainMenu() {
+    console.clear();
+    p.intro(centerText(COLOR.BG_MAGENTA('--- GESTOR DE INVENTARIO Y VENTAS ---')));
+
+    while (true) {
+        const opcion = await p.select({
+            message: COLOR.ACCENT('¿Qué deseas hacer?'),
+            options: [
+                { value: 'comprar', label: '🛒 Comprar Componentes' },
+                { value: 'ver_carrito', label: '🛍️ Ver Carrito y Finalizar Compra' },
+                { value: 'ver_inventario', label: '📦 Ver Inventario Completo' },
+                { value: 'admin', label: '⚙️ Administrar Inventario' },
+                { value: 'salir', label: '🚪 Salir' },
+            ]
+        });
+
+        if (p.isCancel(opcion) || opcion === 'salir') {
+            p.outro(COLOR.SUCCESS('¡Gracias por usar el sistema!'));
+            process.exit(0);
+        }
+
+        switch (opcion) {
+            case 'comprar':
+                await menuComprar();
+                break;
+            case 'ver_carrito':
+                await verCarrito();
+                break;
+            case 'ver_inventario':
+                await mostrarTodosProductos();
+                break;
+            case 'admin':
+                await menuAdmin();
+                break;
+        }
+    }
+}
+
+async function menuComprar() {
+    const categoria = await p.select({
+        message: COLOR.ACCENT('Elige una categoría para comprar:'),
+        options: CATEGORIAS_VALIDAS.map(c => ({ value: c, label: c.toUpperCase() }))
+    });
+
+    if (p.isCancel(categoria)) return;
+    await comprarPorCategoria(categoria);
+}
+
+async function menuAdmin() {
+    const opcion = await p.select({
+        message: COLOR.ACCENT('¿Qué deseas hacer?'),
+        options: [
+            { value: 'agregar', label: '➕ Agregar Producto' },
+            { value: 'eliminar', label: '➖ Eliminar Producto' },
+        ]
+    });
+
+    if (p.isCancel(opcion)) return;
+
+    if (opcion === 'agregar') {
+        await agregarProducto();
+    } else if (opcion === 'eliminar') {
+        await eliminarProducto();
+    }
+}
+
+// --- INICIO DE LA APP ---
+mainMenu();
