@@ -3,8 +3,14 @@
 import { IInventario } from '../interfaces/IInventario.js';
 import { Producto } from '../models/Producto.js';
 import { Database } from 'bun:sqlite';
+import { dirname, join } from 'path';
+import { fileURLToPath } from 'url';
 
-const RUTA_DB = '../../data/inventario.sqlite'; // Ruta donde se guardará el archivo DB
+// --- Solución Robusta para la Ruta de la Base de Datos ---
+// Construye una ruta absoluta al archivo de la base de datos que está en el mismo directorio
+// que este script. Esto evita problemas con la ruta relativa (cwd).
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const RUTA_DB = join(__dirname, 'inventario.sqlite');
 
 /**
  * Implementación concreta de IInventario que gestiona la persistencia
