@@ -1,0 +1,236 @@
+[
+  {
+    "nombre": "Intel Core i5-12400F",
+    "categoria": "CPU",
+    "precio": 1150,
+    "stock": 8
+  },
+  {
+    "nombre": "Intel Core i7-12700KF",
+    "categoria": "CPU",
+    "precio": 1850,
+    "stock": 5
+  },
+  {
+    "nombre": "AMD Ryzen 5 5600",
+    "categoria": "CPU",
+    "precio": 1250,
+    "stock": 6
+  },
+  {
+    "nombre": "AMD Ryzen 7 5800X3D",
+    "categoria": "CPU",
+    "precio": 1950,
+    "stock": 4
+  },
+  {
+    "nombre": "NVIDIA RTX 3060",
+    "categoria": "GPU",
+    "precio": 3100,
+    "stock": 3
+  },
+  {
+    "nombre": "NVIDIA RTX 4060 Ti",
+    "categoria": "GPU",
+    "precio": 3900,
+    "stock": 2
+  },
+  {
+    "nombre": "NVIDIA RTX 4070 Super",
+    "categoria": "GPU",
+    "precio": 5500,
+    "stock": 1
+  },
+  {
+    "nombre": "AMD Radeon RX 6600 XT",
+    "categoria": "GPU",
+    "precio": 2800,
+    "stock": 4
+  },
+  {
+    "nombre": "AMD Radeon RX 7800 XT",
+    "categoria": "GPU",
+    "precio": 4600,
+    "stock": 2
+  },
+  {
+    "nombre": "ASUS Prime B660M-A",
+    "categoria": "Motherboard",
+    "precio": 850,
+    "stock": 6
+  },
+  {
+    "nombre": "MSI B550M PRO-VDH",
+    "categoria": "Motherboard",
+    "precio": 890,
+    "stock": 10
+  },
+  {
+    "nombre": "Gigabyte B450 AORUS M",
+    "categoria": "Motherboard",
+    "precio": 780,
+    "stock": 8
+  },
+  {
+    "nombre": "ASRock B650M PG Riptide",
+    "categoria": "Motherboard",
+    "precio": 970,
+    "stock": 7
+  },
+  {
+    "nombre": "MSI MAG Z790 TOMAHAWK",
+    "categoria": "Motherboard",
+    "precio": 1650,
+    "stock": 3
+  },
+  {
+    "nombre": "Corsair Vengeance 8GB DDR4 3200MHz",
+    "categoria": "RAM",
+    "precio": 230,
+    "stock": 20
+  },
+  {
+    "nombre": "Corsair Vengeance 16GB DDR4 3600MHz",
+    "categoria": "RAM",
+    "precio": 420,
+    "stock": 15
+  },
+  {
+    "nombre": "Kingston Fury Beast 16GB DDR5 5600MHz",
+    "categoria": "RAM",
+    "precio": 620,
+    "stock": 10
+  },
+  {
+    "nombre": "G.Skill Trident Z 32GB DDR5 6000MHz",
+    "categoria": "RAM",
+    "precio": 980,
+    "stock": 6
+  },
+  {
+    "nombre": "TeamGroup T-Force Delta RGB 32GB DDR4",
+    "categoria": "RAM",
+    "precio": 760,
+    "stock": 8
+  },
+  {
+    "nombre": "Kingston A400 480GB SATA SSD",
+    "categoria": "Almacenamiento",
+    "precio": 280,
+    "stock": 15
+  },
+  {
+    "nombre": "Kingston NV2 1TB NVMe",
+    "categoria": "Almacenamiento",
+    "precio": 480,
+    "stock": 9
+  },
+  {
+    "nombre": "Samsung 980 Pro 1TB NVMe",
+    "categoria": "Almacenamiento",
+    "precio": 720,
+    "stock": 6
+  },
+  {
+    "nombre": "Seagate Barracuda 2TB HDD",
+    "categoria": "Almacenamiento",
+    "precio": 350,
+    "stock": 12
+  },
+  {
+    "nombre": "WD Blue SN580 500GB NVMe",
+    "categoria": "Almacenamiento",
+    "precio": 290,
+    "stock": 10
+  },
+  {
+    "nombre": "EVGA 500W 80+ White",
+    "categoria": "PSU",
+    "precio": 290,
+    "stock": 10
+  },
+  {
+    "nombre": "Cooler Master MWE 650W 80+ Bronze",
+    "categoria": "PSU",
+    "precio": 380,
+    "stock": 7
+  },
+  {
+    "nombre": "Corsair CV550 80+ Bronze",
+    "categoria": "PSU",
+    "precio": 320,
+    "stock": 9
+  },
+  {
+    "nombre": "Seasonic S12III 650W 80+ Bronze",
+    "categoria": "PSU",
+    "precio": 400,
+    "stock": 5
+  },
+  {
+    "nombre": "Thermaltake Smart BX1 750W 80+ Bronze",
+    "categoria": "PSU",
+    "precio": 450,
+    "stock": 3
+  },
+  {
+    "nombre": "NZXT H510",
+    "categoria": "Case",
+    "precio": 520,
+    "stock": 5
+  },
+  {
+    "nombre": "Cooler Master NR200P",
+    "categoria": "Case",
+    "precio": 560,
+    "stock": 4
+  },
+  {
+    "nombre": "Lian Li Lancool II Mesh",
+    "categoria": "Case",
+    "precio": 690,
+    "stock": 3
+  },
+  {
+    "nombre": "Corsair 4000D Airflow",
+    "categoria": "Case",
+    "precio": 640,
+    "stock": 6
+  },
+  {
+    "nombre": "Thermaltake Versa H18",
+    "categoria": "Case",
+    "precio": 390,
+    "stock": 8
+  },
+  {
+    "nombre": "DeepCool AK400",
+    "categoria": "Otros",
+    "precio": 230,
+    "stock": 12
+  },
+  {
+    "nombre": "Cooler Master Hyper 212 Black Edition",
+    "categoria": "Otros",
+    "precio": 310,
+    "stock": 7
+  },
+  {
+    "nombre": "Arctic MX-6 Thermal Paste",
+    "categoria": "Otros",
+    "precio": 90,
+    "stock": 20
+  },
+  {
+    "nombre": "Noctua NF-A12x25 PWM",
+    "categoria": "Otros",
+    "precio": 180,
+    "stock": 10
+  },
+  {
+    "nombre": "Logitech G Pro X Keyboard",
+    "categoria": "Otros",
+    "precio": 850,
+    "stock": 4
+  }
+]
