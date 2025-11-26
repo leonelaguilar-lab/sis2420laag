@@ -1,73 +1,75 @@
-// /core/managers/InventarioManager.js
-import { IInventario } from '../interfaces/IInventario.js';
+
 import { Producto } from '../models/Producto.js';
 
 /**
- * Manager para la lógica de negocio relacionada con el Inventario.
- * Depende de una implementación de IInventario (Inyección de Dependencia).
+ * Manager para la lógica de negocio relacionada con el Inventario
+ * Ahora opera directamente con el modelo del orm 
  */
 export class InventarioManager {
+    constructor() {}
+
     /**
-     * @param {IInventario} inventarioRepo - El repositorio concreto (JSON o SQLite)
-     * que implementa IInventario.
+     * Obtiene todos los productos usando el modelo
+     * @returns {Promise<Producto[]>}
      */
-    constructor(inventarioRepo) {
-        if (!(inventarioRepo instanceof IInventario)) {
-            throw new Error('InventarioManager requiere una instancia de IInventario.');
-        }
-        this.repo = inventarioRepo;
+    async obtenerTodos() {
+        return await Producto.cargarTodos();
     }
 
     /**
-     * Obtiene todos los productos del repositorio.
-     * @returns {Producto[]}
-     */
-    obtenerTodos() {
-        // Aquí se pueden agregar filtros o transformaciones antes de devolver
-        return this.repo.cargarTodos();
-    }
-
-    /**
-     * Agrega un nuevo producto. Aquí se valida que el objeto sea correcto antes de guardar.
+     * Agrega un nuevo producto a la base de datos
      * @param {string} nombre
      * @param {string} categoria
      * @param {number} precio
      * @param {number} stock
+     * @param {number} potencia
+     * @returns {Promise<Producto>}
      */
-    agregarProducto(nombre, categoria, precio, stock, potencia = 0) {
-        // La creación del Producto se considera lógica de negocio/modelo
-        const nuevoProducto = new Producto(nombre, categoria, precio, stock, potencia); 
+    async agregarProducto(nombre, categoria, precio, stock, potencia = 0) {
+        const id = nombre.toLowerCase().replace(/\s/g, '-');
         
-        const inventario = this.obtenerTodos();
-        inventario.push(nuevoProducto);
-        this.repo.guardarTodos(inventario);
+        // Creamos el producto directamente en la base de datos
+        const nuevoProducto = await Producto.create({
+            id,
+            nombre,
+            categoria,
+            precio,
+            stock,
+            potencia
+        });
 
         return nuevoProducto;
     }
     
-    // Aquí iría el resto de tu lógica de gestión (eliminarProducto, etc.)
-    
-    eliminarProducto(id) {
-        const inventario = this.obtenerTodos();
-        const indice = inventario.findIndex(p => p.id === id);
+    /**
+     * Elimina un producto de la base de datos por su id
+     * @param {string} id 
+     */
+    async eliminarProducto(id) {
+        const resultado = await Producto.destroy({
+            where: { id: id }
+        });
 
-        if (indice === -1) {
+        if (resultado === 0) {
             throw new Error(`Producto con ID ${id} no encontrado.`);
         }
-
-        inventario.splice(indice, 1);
-        this.repo.guardarTodos(inventario);
     }
 
-    obtenerPorId(id) {
-        return this.repo.obtenerPorId(id);
+    /**
+     * Obtiene un producto por su id
+     * @param {string} id
+     * @returns {Promise<Producto|null>}
+     */
+    async obtenerPorId(id) {
+        return await Producto.obtenerPorId(id);
     }
 
-    actualizarStock(id, cantidad) {
-        const producto = this.repo.obtenerPorId(id);
-        if (!producto) {
-            throw new Error(`Producto con ID ${id} no encontrado.`);
-        }
-        this.repo.actualizarStock(id, cantidad);
+    /**
+     * Actualiza el stock de un producto (sumando o restando)
+     * @param {string} id
+     * @param {number} cantidad - Cantidad a sumar/restar (ej. -1 para vender)
+     */
+    async actualizarStock(id, cantidad) {
+        await Producto.actualizarStock(id, cantidad);
     }
 }

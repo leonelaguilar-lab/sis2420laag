@@ -1,73 +1,117 @@
+// Set environment variable for test database file BEFORE importing database.js
+process.env.TEST_DB_FILE = 'test_inventario.sqlite';
+
 import { InventarioManager } from '../core/managers/InventarioManager.js';
 import { Producto } from '../core/models/Producto.js';
-import { IInventario } from '../core/interfaces/IInventario.js';
-import { expect, test, describe, beforeEach } from 'bun:test';
+import { sequelize } from '../core/data/database.js';
+import { expect, test, describe, beforeAll, afterAll, beforeEach } from 'bun:test';
+import { unlink, access } from 'fs/promises';
+import { constants } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 
-// Clase Mock que simula la base de datos y cumple con la interfaz IInventario
-class MockInventarioRepo extends IInventario {
-    constructor(inventarioInicial) {
-        super(); // Esencial al heredar
-        // Copiamos para no modificar el array original entre tests
-        this.inventarioActual = inventarioInicial.map(p => new Producto(p.nombre, p.categoria, p.precio, p.stock, p.potencia));
-    }
-    
-    cargarTodos() {
-        return this.inventarioActual;
-    }
-    
-    guardarTodos(data) {
-        this.inventarioActual = data;
-    }
-    
-    obtenerPorId(id) {
-        return this.inventarioActual.find(p => p.id === id);
-    }
-}
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const TEST_DB_PATH = join(__dirname, '../core/data', process.env.TEST_DB_FILE);
 
-// Datos iniciales para el mock, ahora con 'potencia'
+// Datos iniciales para cada test
 const mockInventarioInicial = [
-    new Producto('CPU Test', 'cpu', 300, 5, 75), // id se autogenera a 'cpu-test'
-    new Producto('GPU Test', 'gpu', 500, 10, 80), // id se autogenera a 'gpu-test'
+    { id: 'cpu-test', nombre: 'CPU Test', categoria: 'cpu', precio: 300, stock: 5, potencia: 75 },
+    { id: 'gpu-test', nombre: 'GPU Test', categoria: 'gpu', precio: 500, stock: 10, potencia: 80 },
+    { id: 'ram-test', nombre: 'RAM Test', categoria: 'ram', precio: 50, stock: 20, potencia: 0 },
 ];
 
-describe('InventarioManager (Con Mock de DB)', () => {
+describe('InventarioManager (Integración con Sequelize)', () => {
     let manager;
 
-    beforeEach(() => {
-        // Antes de cada test, creamos un repo y un manager nuevos.
-        const mockRepo = new MockInventarioRepo(mockInventarioInicial);
-        manager = new InventarioManager(mockRepo);
+    // Conectar a la base de datos y sincronizar modelos una vez antes de todos los tests
+    beforeAll(async () => {
+        // force: true creará las tablas, eliminando cualquier dato existente.
+        // Esto asegura un entorno limpio para los tests.
+        await sequelize.sync({ force: true });
+        manager = new InventarioManager(); // Instanciar el manager una vez
     });
 
-    test('debería cargar el inventario inicial', () => {
-        const productos = manager.obtenerTodos();
-        expect(productos.length).toBe(2);
+    // Limpiar y poblar la base de datos antes de cada test
+    beforeEach(async () => {
+        // Eliminar todos los productos existentes
+        await Producto.destroy({ truncate: true });
+        // Insertar los datos de prueba
+        await Producto.bulkCreate(mockInventarioInicial);
+    });
+
+    // Cerrar la conexión a la base de datos y eliminar el archivo de la DB de test
+    afterAll(async () => {
+        await sequelize.close();
+        try {
+            await access(TEST_DB_PATH, constants.F_OK); // Check if file exists
+            await unlink(TEST_DB_PATH); // Delete the test DB file
+            console.log(`[Test Cleanup] Deleted test database: ${TEST_DB_PATH}`);
+        } catch (e) {
+            console.warn(`[Test Cleanup] Test database not found or could not be deleted: ${TEST_DB_PATH} (${e.message})`);
+        }
+    });
+
+    test('debería cargar el inventario inicial', async () => {
+        const productos = await manager.obtenerTodos();
+        expect(productos.length).toBe(mockInventarioInicial.length);
         expect(productos[0].nombre).toBe('CPU Test');
     });
 
-    test('debería agregar un nuevo producto', () => {
-        // La firma de agregarProducto en el manager podría necesitar ajuste si también
-        // debe tomar 'potencia'. Asumiendo que es `(nombre, cat, precio, stock, potencia)`
-        manager.agregarProducto('RAM Test', 'ram', 50, 20, 0);
-        const productos = manager.obtenerTodos();
+    test('debería agregar un nuevo producto', async () => {
+        const nuevoProducto = {
+            nombre: 'SSD Test', 
+            categoria: 'otros', 
+            precio: 100, 
+            stock: 15, 
+            potencia: 0
+        };
+        await manager.agregarProducto(
+            nuevoProducto.nombre, 
+            nuevoProducto.categoria, 
+            nuevoProducto.precio, 
+            nuevoProducto.stock, 
+            nuevoProducto.potencia
+        );
         
-        const ramTestProd = productos.find(p => p.nombre === 'RAM Test');
+        const productos = await manager.obtenerTodos();
+        const ssdTestProd = productos.find(p => p.nombre === 'SSD Test');
         
-        expect(productos.length).toBe(3);
-        expect(ramTestProd).toBeDefined();
-        expect(ramTestProd.categoria).toBe('ram');
+        expect(productos.length).toBe(mockInventarioInicial.length + 1);
+        expect(ssdTestProd).toBeDefined();
+        expect(ssdTestProd.categoria).toBe('otros');
     });
     
-    test('debería eliminar un producto por ID', () => {
-        const idParaEliminar = 'gpu-test'; // ID autogenerado
-        manager.eliminarProducto(idParaEliminar);
-        const productos = manager.obtenerTodos();
-        expect(productos.length).toBe(1);
+    test('debería eliminar un producto por ID', async () => {
+        const idParaEliminar = 'gpu-test';
+        await manager.eliminarProducto(idParaEliminar);
+        const productos = await manager.obtenerTodos();
+        expect(productos.length).toBe(mockInventarioInicial.length - 1);
         expect(productos.some(p => p.id === idParaEliminar)).toBe(false);
     });
     
-    test('debería fallar al eliminar un producto que no existe', () => {
+    test('debería fallar al eliminar un producto que no existe', async () => {
         const idInexistente = 'id-no-existe';
-        expect(() => manager.eliminarProducto(idInexistente)).toThrow(`Producto con ID ${idInexistente} no encontrado.`);
+        await expect(manager.eliminarProducto(idInexistente)).rejects.toThrow(`Producto con ID ${idInexistente} no encontrado.`);
+    });
+
+    test('debería obtener un producto por ID', async () => {
+        const producto = await manager.obtenerPorId('cpu-test');
+        expect(producto).toBeDefined();
+        expect(producto.nombre).toBe('CPU Test');
+    });
+
+    test('debería actualizar el stock de un producto', async () => {
+        const idProducto = 'cpu-test';
+        const cantidadAfectada = -2; // Vender 2 unidades
+        await manager.actualizarStock(idProducto, cantidadAfectada);
+
+        const productoActualizado = await manager.obtenerPorId(idProducto);
+        expect(productoActualizado.stock).toBe(mockInventarioInicial[0].stock + cantidadAfectada);
+    });
+
+    test('debería lanzar un error si se intenta actualizar stock de producto inexistente', async () => {
+        const idInexistente = 'non-existent-id';
+        await expect(manager.actualizarStock(idInexistente, -1)).rejects.toThrow(`Producto con ID ${idInexistente} no encontrado para actualizar stock.`);
     });
 });
+

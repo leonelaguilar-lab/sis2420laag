@@ -1,33 +1,16 @@
-// index.js (TUI Refactorizado)
 import * as p from '@clack/prompts';
 import chalk from 'chalk';
 import stripAnsi from 'strip-ansi';
-
-// Importamos el Core (Modelos, Managers, Repositorios)
+import { sequelize } from '../../core/data/database.js';
 import { Producto } from '../../core/models/Producto.js';
-import { InventarioRepositorioSqlite } from '../../core/data/InventarioRepositorioSqlite.js';
 import { InventarioManager } from '../../core/managers/InventarioManager.js';
-import { CarritoManager } from '../../core/managers/CarritoManager.js'
+import { CarritoManager } from '../../core/managers/CarritoManager.js';
 
-// Importamos las librerías necesarias para la VISTA (PDF, LOGs)
-import { existsSync, mkdirSync, createWriteStream, appendFileSync } from 'fs'; // Solo se mantiene para la factura/logs
-import PDFDocument from 'pdfkit';
-
-// --- ARQUITECTURA Y GESTORES ---
-
-// 1. Inicializar el Repositorio (Capa de Persistencia)
-const inventarioRepo = new InventarioRepositorioSqlite();
-
-// 2. Inicializar el Manager (Lógica de Negocio)
-const gestorInventario = new InventarioManager(inventarioRepo);
-
-// 3. Carrito de compras global (Lógica de Carrito aún en el TUI por simplicidad,
-//    idealmente sería un CarritoManager, pero lo manejamos aquí por ahora)
+const gestorInventario = new InventarioManager();
 const gestorCarrito = new CarritoManager();
 
 const CATEGORIAS_VALIDAS = ['cpu', 'gpu', 'ram', 'psu', 'case', 'otros'];
 
-// --- UTILIDADES ---
 const COLOR = {
     ERROR: chalk.red,
     SUCCESS: chalk.green,
@@ -58,12 +41,11 @@ function barraPorcentaje(p) {
     return `[${'█'.repeat(llenas)}${'-'.repeat(vacias)}] ${p.toFixed(0)}%`;
 }
 
-
-// --- Funciones de Gestión de Inventario ---
-// Muestra la lista completa de productos
 async function mostrarTodosProductos() {
-    // 💡 Llama al Manager (Controlador) para obtener los datos
-    const inventario = gestorInventario.obtenerTodos(); 
+    const s = p.spinner();
+    s.start('Cargando inventario desde la base de datos...');
+    const inventario = await gestorInventario.obtenerTodos(); 
+    s.stop('Inventario cargado.');
     
     console.clear();
     p.intro(centerText(COLOR.WARNING('--- INVENTARIO COMPLETO ---')));
@@ -74,19 +56,16 @@ async function mostrarTodosProductos() {
         return;
     }
 
-    // El resto es lógica de presentación (Vista)
     inventario.forEach((prod, i) => {
         console.log(`${COLOR.INFO(i + 1)}. ${COLOR.MAIN(prod.nombre)} - ${COLOR.CATEGORY(prod.categoria.toUpperCase())} - ${COLOR.WARNING(prod.precio)} Bs (${COLOR.SUCCESS(prod.stock)} uds)`);
     });
     await esperarContinuar();
 }
 
-// Agregar producto
 async function agregarProducto() {
     console.clear();
     p.intro(centerText(COLOR.SUCCESS('--- AGREGAR NUEVO PRODUCTO ---')));
 
-    // --- Lógica de Vista (Recolección de datos) ---
     const nombre = await p.text({
         message: COLOR.ACCENT('Nombre del producto:'), 
         validate: (v) => v.trim().length === 0 ? COLOR.ERROR('El nombre no puede estar vacío.') : undefined 
@@ -102,9 +81,7 @@ async function agregarProducto() {
     const precioRaw = await p.text({
         message: COLOR.ACCENT('Precio (en Bs):'),
         validate: (value) => {
-            const num = parseFloat(value);
-            // Usamos las validaciones definidas en el modelo/manager
-            if (isNaN(num) || num <= 0) return COLOR.ERROR('Debe ser un número positivo.');
+            if (isNaN(parseFloat(value)) || parseFloat(value) <= 0) return COLOR.ERROR('Debe ser un número positivo.');
             return undefined;
         }
     });
@@ -113,34 +90,45 @@ async function agregarProducto() {
     const stockRaw = await p.text({
         message: COLOR.ACCENT('Cantidad en stock:'),
         validate: (value) => {
-            const num = parseInt(value);
-            if (isNaN(num) || num < 0) return COLOR.ERROR('Debe ser un número entero no negativo.');
+            if (isNaN(parseInt(value)) || parseInt(value) < 0) return COLOR.ERROR('Debe ser un número entero no negativo.');
             return undefined;
         }
     });
     if (p.isCancel(stockRaw)) return;
 
-    // --- Lógica de Controlador (Llamada al Manager) ---
+    const potenciaRaw = (categoria === 'cpu' || categoria === 'gpu') ? await p.text({
+        message: COLOR.ACCENT('Potencia (0-100):'),
+        initialValue: '0',
+        validate: (v) => (isNaN(parseInt(v)) || parseInt(v) < 0) ? 'Debe ser un número no negativo.' : undefined,
+    }) : 0;
+    if (p.isCancel(potenciaRaw)) return;
+
     try {
-        gestorInventario.agregarProducto(
+        const s = p.spinner();
+        s.start('Guardando producto en la base de datos...');
+        await gestorInventario.agregarProducto(
             nombre.trim(),
             categoria,
             parseFloat(precioRaw),
-            parseInt(stockRaw)
+            parseInt(stockRaw),
+            parseInt(potenciaRaw)
         );
-        p.note(COLOR.SUCCESS(`Producto "${nombre}" agregado correctamente a SQLite.`));
+        s.stop('Producto guardado.');
+        p.note(COLOR.SUCCESS(`Producto "${nombre}" agregado correctamente.`));
     } catch (e) {
-        p.note(COLOR.ERROR(`Error al guardar: ${e.message}`));
+        const mensajeError = e.errors ? e.errors.map(err => err.message).join(', ') : e.message;
+        p.note(COLOR.ERROR(`Error al guardar: ${mensajeError}`));
     }
 }
 
-// Eliminar producto
 async function eliminarProducto() {
     console.clear();
     p.intro(centerText(COLOR.ERROR('--- ELIMINAR PRODUCTO ---')));
     
-    // 💡 Llama al Manager (Controlador) para obtener los datos
-    const inventario = gestorInventario.obtenerTodos(); 
+    const s = p.spinner();
+    s.start('Cargando inventario...');
+    const inventario = await gestorInventario.obtenerTodos(); 
+    s.stop('Inventario cargado.');
     
     if (inventario.length === 0) {
         p.note('No hay productos para eliminar.');
@@ -148,7 +136,6 @@ async function eliminarProducto() {
     }
 
     const opciones = inventario.map((p) => ({
-        // Usamos el ID del Modelo Producto para identificar de forma única
         value: p.id, 
         label: `${p.nombre} (${p.categoria.toUpperCase()}) - ${p.stock} uds`
     }));
@@ -159,23 +146,26 @@ async function eliminarProducto() {
     });
     if (p.isCancel(idSeleccionado)) return;
 
-    // --- Lógica de Controlador (Llamada al Manager) ---
     try {
-        const nombreEliminado = inventario.find(p => p.id === idSeleccionado).nombre;
-        gestorInventario.eliminarProducto(idSeleccionado);
+        const nombreEliminado = inventario.find(p => p.id === idSeleccionado)?.nombre || 'Producto desconocido';
+        s.start('Eliminando producto...');
+        await gestorInventario.eliminarProducto(idSeleccionado);
+        s.stop('Producto eliminado.');
         p.note(COLOR.ERROR(`Producto eliminado: ${nombreEliminado}`));
     } catch (e) {
         p.note(COLOR.ERROR(`Error al eliminar: ${e.message}`));
     }
 }
 
-// Función para seleccionar productos de una categoría y agregar al carrito
 async function comprarPorCategoria(categoria) {
     console.clear();
     p.intro(centerText(COLOR.SUCCESS(`--- COMPRAR ${categoria.toUpperCase()} ---`)));
-
-    const productos = gestorInventario.obtenerTodos();
+    
+    const s = p.spinner();
+    s.start('Cargando productos...');
+    const productos = await gestorInventario.obtenerTodos();
     const productosFiltrados = productos.filter(p => p.categoria === categoria && p.stock > 0);
+    s.stop('Productos cargados.');
 
     if (productosFiltrados.length === 0) {
         p.note(COLOR.WARNING(`No hay stock de ${categoria.toUpperCase()} por el momento.`));
@@ -210,7 +200,6 @@ async function comprarPorCategoria(categoria) {
     });
 
     if (p.isCancel(cantidadRaw)) return;
-
     const cantidad = parseInt(cantidadRaw);
 
     try {
@@ -221,7 +210,6 @@ async function comprarPorCategoria(categoria) {
     }
 }
 
-// Funcion para ver el carrito
 async function verCarrito() {
     while (true) {
         console.clear();
@@ -257,7 +245,6 @@ async function verCarrito() {
             options: opcionesCarrito
         });
 
-
         if (p.isCancel(opcion) || opcion === 'volver') return;
 
         if (opcion === 'finalizar') {
@@ -269,12 +256,12 @@ async function verCarrito() {
         } else if (!isNaN(parseInt(opcion))) {
             const indice = parseInt(opcion);
             const eliminado = gestorCarrito.eliminarItem(indice);
-            p.note(COLOR.ERROR(`Artículo eliminado: ${eliminado.nombre}`));
+            await gestorInventario.actualizarStock(eliminado.id, eliminado.cantidad);
+            p.note(COLOR.ERROR(`Artículo eliminado: ${eliminado.nombre}. Stock devuelto.`));
         }
     }
 }
 
-// Funcion para calcular el cuello de botella
 async function calcularCuelloBotellaTUI() {
     console.clear();
     p.intro(centerText(COLOR.INFO('---  CÁLCULO DE CUELLO DE BOTELLA ---')));
@@ -296,33 +283,31 @@ async function calcularCuelloBotellaTUI() {
     console.log(resultado.esCuello ? COLOR.ERROR.bold(resultado.mensaje) : COLOR.SUCCESS.bold(resultado.mensaje));
     await esperarContinuar();
 }
-// Funcion para finalizar la compra
+
 async function finalizarCompra(items, total) {
+    const s = p.spinner();
+    s.start('Finalizando compra y actualizando stock...');
     try {
-        // --- 1. Lógica de negocio: Actualizar Stock en SQLite ---
         for (const item of items) {
-            gestorInventario.repo.actualizarStock(item.id, -item.cantidad);
+            await gestorInventario.actualizarStock(item.id, -item.cantidad);
         }
 
-        // --- 2. Lógica de Vista/Reporte: Generar Factura ---
-        // await generarFacturaPDF(items, total); // Comentado para simplificar
-
-        // --- 3. Lógica de negocio: Vaciar Carrito ---
         gestorCarrito.vaciarCarrito();
 
+        s.stop('¡Compra completada!');
         p.note(COLOR.SUCCESS.bgGreen(`¡COMPRA COMPLETADA con un total de ${total.toFixed(2)} Bs! Se actualizó el stock.`));
         await esperarContinuar();
         
     } catch (error) {
+        s.stop('Error en la compra.');
         p.note(COLOR.ERROR(`ERROR en la finalización de la compra. Stock no actualizado: ${error.message}`));
         await esperarContinuar();
     }
 }
 
-// --- Flujo Principal de la Aplicación (TUI) ---
 async function mainMenu() {
     console.clear();
-    p.intro(centerText(COLOR.BG_MAGENTA('--- GESTOR DE INVENTARIO Y VENTAS ---')));
+    p.intro(centerText(COLOR.BG_MAGENTA('--- GESTOR DE INVENTARIO Y VENTAS (TUI) ---')));
 
     while (true) {
         const opcion = await p.select({
@@ -337,8 +322,7 @@ async function mainMenu() {
         });
 
         if (p.isCancel(opcion) || opcion === 'salir') {
-            p.outro(COLOR.SUCCESS('¡Gracias por usar el sistema!'));
-            process.exit(0);
+            return;
         }
 
         switch (opcion) {
@@ -386,5 +370,25 @@ async function menuAdmin() {
     }
 }
 
-// --- INICIO DE LA APP ---
-mainMenu();
+async function startApp() {
+    try {
+        console.clear();
+        const s = p.spinner();
+        s.start('Conectando a la base de datos...');
+        await sequelize.sync({ alter: true });
+        s.message('Base de datos sincronizada. Verificando datos...');
+        await Producto.inicializarDatos();
+        s.stop('¡Conexión exitosa!');
+
+        await mainMenu();
+
+    } catch (error) {
+        p.cancel(COLOR.ERROR(`Error fatal al iniciar: ${error.message}`));
+    } finally {
+        await sequelize.close();
+        p.outro(COLOR.SUCCESS('¡Gracias por usar el sistema! Conexión cerrada.'));
+        process.exit(0);
+    }
+}
+
+startApp();

@@ -1,9 +1,8 @@
-// /core/managers/CarritoManager.js
+
 import { ItemCarrito } from '../models/Producto.js';
 
-/**
- * Manager para la lógica de negocio del Carrito de Compras.
- */
+//Manager para la lógica de negocio del Carrito de Compras
+
 export class CarritoManager {
     constructor() {
         this.carrito = []; // Almacena instancias de ItemCarrito
@@ -14,7 +13,7 @@ export class CarritoManager {
     }
 
     agregarItem(producto, cantidad) {
-        // Validación del stock (aunque la haremos de nuevo en la TUI antes de actualizar la DB)
+        // Validación del stock 
         if (cantidad > producto.stock) {
             throw new Error(`Stock insuficiente. Máximo disponible: ${producto.stock}.`);
         }
@@ -52,16 +51,15 @@ export class CarritoManager {
      * @returns {{pCPU: number, pGPU: number, mensaje: string, esCuello: boolean}}
      */
     calcularCuelloBotella() {
-        // 1. Encontrar la CPU y GPU más potentes en el carrito
+        
         const cpuMasPotente = this.carrito
             .filter(item => item.categoria === 'cpu')
-            .sort((a, b) => b.potencia - a.potencia)[0]; // Ordena de mayor a menor y toma el primero
+            .sort((a, b) => b.potencia - a.potencia)[0];
 
         const gpuMasPotente = this.carrito
             .filter(item => item.categoria === 'gpu')
             .sort((a, b) => b.potencia - a.potencia)[0];
 
-        // 2. Validar que ambos componentes existan
         if (!cpuMasPotente || !gpuMasPotente) {
             return {
                 cpu: null,
@@ -71,21 +69,18 @@ export class CarritoManager {
             };
         }
 
-        // 3. Lógica de balance basada en puntajes de 'potencia'
         const pCPU = cpuMasPotente.potencia;
         const pGPU = gpuMasPotente.potencia;
         const diferencia = Math.abs(pCPU - pGPU);
-        const UMBRAL_CUELLO_BOTELLA = 20; // Si la diferencia es > 20, hay desbalance
+        const UMBRAL_CUELLO_BOTELLA = 20; // Si la diferencia es > 20 hay desbalance
 
         let esCuello = diferencia > UMBRAL_CUELLO_BOTELLA;
         let mensaje = "";
 
         if (esCuello) {
             if (pCPU > pGPU) {
-                // CPU es mucho más potente que la GPU
                 mensaje = `¡Cuello de botella detectado! La GPU (${gpuMasPotente.nombre}) es significativamente menos potente y podría limitar el rendimiento de la CPU (${cpuMasPotente.nombre}).`;
             } else {
-                // GPU es mucho más potente que la CPU
                 mensaje = `¡Cuello de botella detectado! La CPU (${cpuMasPotente.nombre}) es significativamente menos potente y podría limitar el rendimiento de la GPU (${gpuMasPotente.nombre}).`;
             }
         } else {

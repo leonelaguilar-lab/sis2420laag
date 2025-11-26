@@ -1,13 +1,10 @@
 import readline from 'readline';
 import chalk from 'chalk';
-import { InventarioRepositorioSqlite } from '../../core/data/InventarioRepositorioSqlite.js';
+import { sequelize } from '../../core/data/database.js';
+import { Producto } from '../../core/models/Producto.js';
 import { InventarioManager } from '../../core/managers/InventarioManager.js';
 import { CarritoManager } from '../../core/managers/CarritoManager.js';
-import { Producto } from '../../core/models/Producto.js'; // Necesario para crear productos
 
-// =================================================================
-// 1. VISTA (View)
-// =================================================================
 export class ConsoleView {
     constructor(logger = console.log, clear = () => console.clear()) {
         this.logger = logger;
@@ -17,7 +14,7 @@ export class ConsoleView {
 
     mostrarMenuPrincipal() {
         this.clear();
-        this.logger(chalk.blue.bold("\n=== CONSOLE-STORE (MVC) ===\n"));
+        this.logger(chalk.blue.bold("\n=== CONSOLE-STORE (ORM - Sequelize) ===\n"));
         this.logger("1. 🛒 Comprar Componentes");
         this.logger("2. 🛍️ Ver Carrito y Finalizar Compra");
         this.logger("3. 📦 Ver Inventario Completo");
@@ -111,9 +108,6 @@ export class ConsoleView {
     }
 }
 
-// =================================================================
-// 2. CONTROLADOR (Controller)
-// =================================================================
 export class ConsoleController {
     constructor(inventarioManager, carritoManager, view, question) {
         this.inventarioManager = inventarioManager;
@@ -135,7 +129,7 @@ export class ConsoleController {
                 case '4': await this.gestionarAdmin(); break;
                 case '5':
                     this.view.mostrarMensaje("¡Gracias por usar el sistema!", "blue");
-                    return;
+                    return; // Sale del bucle y termina la ejecución
                 default:
                     this.view.mostrarMensaje("Opción no válida. Intenta de nuevo.", "red");
                     await this.pausar();
@@ -148,7 +142,7 @@ export class ConsoleController {
     }
 
     async verInventarioCompleto() {
-        const productos = this.inventarioManager.obtenerTodos();
+        const productos = await this.inventarioManager.obtenerTodos();
         this.view.mostrarInventario(productos, 'Inventario Completo');
         await this.pausar();
     }
@@ -169,17 +163,16 @@ export class ConsoleController {
 
             const categoriaSeleccionada = this.CATEGORIAS_VALIDAS[opcion - 1];
             await this.gestionarCompraPorCategoria(categoriaSeleccionada);
-            // Después de comprar por categoría, mostramos el carrito o volvemos al menú principal de compra
-            // this.view.mostrarMensaje(`Volviendo a categorías de compra...`);
-            // await this.pausar();
         }
     }
 
     async gestionarCompraPorCategoria(categoria) {
-        const productos = this.inventarioManager.obtenerTodos().filter(p => p.categoria === categoria && p.stock > 0);
-        this.view.mostrarProductosParaSeleccion(productos, `Comprar ${categoria.toUpperCase()}`);
+        const todosLosProductos = await this.inventarioManager.obtenerTodos();
+        const productosFiltrados = todosLosProductos.filter(p => p.categoria === categoria && p.stock > 0);
+        
+        this.view.mostrarProductosParaSeleccion(productosFiltrados, `Comprar ${categoria.toUpperCase()}`);
 
-        if (productos.length === 0) {
+        if (productosFiltrados.length === 0) {
             this.view.mostrarMensaje(`No hay productos de ${categoria} disponibles o en stock.`, "red");
             await this.pausar();
             return;
@@ -189,13 +182,13 @@ export class ConsoleController {
         if (seleccionRaw === '0') return;
 
         const indice = parseInt(seleccionRaw) - 1;
-        if (isNaN(indice) || indice < 0 || indice >= productos.length) {
+        if (isNaN(indice) || indice < 0 || indice >= productosFiltrados.length) {
             this.view.mostrarMensaje("Selección de producto no válida.", "red");
             await this.pausar();
             return;
         }
 
-        const productoSeleccionado = productos[indice];
+        const productoSeleccionado = productosFiltrados[indice];
         const cantidadRaw = await this.question(chalk.yellow(`¿Cuántas unidades de ${productoSeleccionado.nombre} quieres? (Max: ${productoSeleccionado.stock}): `));
         const cantidad = parseInt(cantidadRaw);
 
@@ -207,7 +200,8 @@ export class ConsoleController {
 
         try {
             this.carritoManager.agregarItem(productoSeleccionado, cantidad);
-            this.inventarioManager.actualizarStock(productoSeleccionado.id, -cantidad);
+            // La actualización de stock ahora es asíncrona
+            await this.inventarioManager.actualizarStock(productoSeleccionado.id, -cantidad);
             this.view.mostrarMensaje(`${cantidad}x ${productoSeleccionado.nombre} añadido al carrito.`, "green");
         } catch (e) {
             this.view.mostrarMensaje(`Error al añadir al carrito: ${e.message}`, "red");
@@ -233,7 +227,7 @@ export class ConsoleController {
             switch (opcion) {
                 case '1':
                     await this.finalizarCompra();
-                    if (this.carritoManager.obtenerItems().length === 0) return; // Si la compra fue exitosa, salir del carrito
+                    if (this.carritoManager.obtenerItems().length === 0) return;
                     break;
                 case '2':
                     await this.eliminarItemDelCarrito();
@@ -267,7 +261,8 @@ export class ConsoleController {
 
         try {
             const eliminado = this.carritoManager.eliminarItem(indice);
-            this.inventarioManager.actualizarStock(eliminado.id, eliminado.cantidad);
+            // Devolver el stock es una operación asíncrona
+            await this.inventarioManager.actualizarStock(eliminado.id, eliminado.cantidad);
             this.view.mostrarMensaje(`${eliminado.nombre} (${eliminado.cantidad} uds) eliminado del carrito. Stock devuelto.`, "yellow");
         } catch (e) {
             this.view.mostrarMensaje(`Error al eliminar: ${e.message}`, "red");
@@ -286,7 +281,6 @@ export class ConsoleController {
         this.view.mostrarMensaje(`Finalizando compra por un total de ${total.toFixed(2)} Bs...`, "green");
         
         try {
-            // El stock ya se actualizó al añadir, aquí solo vaciamos el carrito
             this.carritoManager.vaciarCarrito();
             this.view.mostrarMensaje("¡Compra completada con éxito!", "green");
         } catch (e) {
@@ -316,31 +310,35 @@ export class ConsoleController {
         this.view.clear();
         this.view.logger(chalk.green.bold("--- AGREGAR NUEVO PRODUCTO ---"));
 
-        const nombre = await this.question("Nombre del producto: ");
-        const categoriaRaw = await this.question(`Categoría (${this.CATEGORIAS_VALIDAS.join(', ')}): `);
-        const categoria = categoriaRaw.toLowerCase();
-        
-        if (!this.CATEGORIAS_VALIDAS.includes(categoria)) {
-            this.view.mostrarMensaje("Categoría no válida.", "red");
-            await this.pausar();
-            return;
-        }
-
-        const precio = parseFloat(await this.question("Precio: "));
-        const stock = parseInt(await this.question("Stock: "));
-        const potencia = (categoria === 'cpu' || categoria === 'gpu') ? parseInt(await this.question("Potencia (0 si no aplica): ")) : 0;
-
         try {
-            this.inventarioManager.agregarProducto(nombre, categoria, precio, stock, potencia);
+            const nombre = await this.question("Nombre del producto: ");
+            const categoriaRaw = await this.question(`Categoría (${this.CATEGORIAS_VALIDAS.join(', ')}): `);
+            const categoria = categoriaRaw.toLowerCase();
+            
+            if (!this.CATEGORIAS_VALIDAS.includes(categoria)) {
+                this.view.mostrarMensaje("Categoría no válida.", "red");
+                await this.pausar();
+                return;
+            }
+
+            const precio = parseFloat(await this.question("Precio: "));
+            const stock = parseInt(await this.question("Stock: "));
+            const potencia = (categoria === 'cpu' || categoria === 'gpu') ? parseInt(await this.question("Potencia (0 si no aplica): ")) : 0;
+            
+            // La llamada al manager ahora es asíncrona
+            await this.inventarioManager.agregarProducto(nombre, categoria, precio, stock, potencia);
             this.view.mostrarMensaje(`Producto '${nombre}' agregado con éxito.`, "green");
+
         } catch (e) {
-            this.view.mostrarMensaje(`Error al agregar producto: ${e.message}`, "red");
+            // Capturamos errores de validación de Sequelize o del manager
+            const mensajeError = e.errors ? e.errors.map(err => err.message).join(', ') : e.message;
+            this.view.mostrarMensaje(`Error al agregar producto: ${mensajeError}`, "red");
         }
         await this.pausar();
     }
 
     async eliminarProductoAdmin() {
-        const productos = this.inventarioManager.obtenerTodos();
+        const productos = await this.inventarioManager.obtenerTodos();
         this.view.mostrarInventario(productos, 'Eliminar Producto');
 
         if (productos.length === 0) {
@@ -353,7 +351,8 @@ export class ConsoleController {
         if (id === '0') return;
 
         try {
-            this.inventarioManager.eliminarProducto(id);
+            // La llamada al manager ahora es asíncrona
+            await this.inventarioManager.eliminarProducto(id);
             this.view.mostrarMensaje(`Producto con ID '${id}' eliminado con éxito.`, "yellow");
         } catch (e) {
             this.view.mostrarMensaje(`Error al eliminar producto: ${e.message}`, "red");
@@ -362,23 +361,33 @@ export class ConsoleController {
     }
 }
 
-// =================================================================
-// 3. PUNTO DE ENTRADA
-// =================================================================
-function main() {
+
+async function main() {
     const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
     const question = (query) => new Promise(resolve => rl.question(query, resolve));
 
-    const repo = new InventarioRepositorioSqlite();
-    const inventarioManager = new InventarioManager(repo);
-    const carritoManager = new CarritoManager();
-    
-    const view = new ConsoleView(console.log, () => console.clear());
-    const controller = new ConsoleController(inventarioManager, carritoManager, view, question);
+    try {
+        console.log(chalk.blue('Conectando con la base de datos...'));
+        await sequelize.sync({ alter: true }); 
+        console.log(chalk.green('¡Conexión exitosa y modelos sincronizados!'));
 
-    controller.run().then(() => {
+        await Producto.inicializarDatos();
+
+        const inventarioManager = new InventarioManager();
+        const carritoManager = new CarritoManager();
+        
+        const view = new ConsoleView(console.log, () => console.clear());
+        const controller = new ConsoleController(inventarioManager, carritoManager, view, question);
+
+        await controller.run();
+
+    } catch (error) {
+        console.error(chalk.red('Error fatal durante la inicialización:'), error);
+    } finally {
+        await sequelize.close();
         rl.close();
-    });
+        console.log(chalk.blue('Conexión a la base de datos cerrada.'));
+    }
 }
 
 if (import.meta.main) {

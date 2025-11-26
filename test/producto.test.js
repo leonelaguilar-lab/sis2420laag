@@ -1,39 +1,31 @@
-// /tests/producto.test.js
-
 import { Producto, ItemCarrito } from '../core/models/Producto.js';
 import { expect, test, describe } from 'bun:test';
 
-describe('Modelo Producto', () => {
-    test('debería crear un producto válido', () => {
-        const prod = new Producto('RTX 4090', 'GPU', 1500, 5);
-        expect(prod.nombre).toBe('RTX 4090');
-        expect(prod.categoria).toBe('gpu'); // Comprueba la conversión a minúsculas
-        expect(prod.precio).toBe(1500);
-        expect(prod.id).toBe('rtx-4090'); // Comprueba la generación de ID
-    });
-
-    test('debería lanzar un error por datos inválidos', () => {
-        // Prueba: Precio negativo
-        expect(() => new Producto('Monitor', 'otros', -10, 5)).toThrow();
-        // Prueba: Categoría inválida
-        expect(() => new Producto('Mouse', 'periférico', 50, 10)).toThrow();
-        // Prueba: Stock no entero
-        expect(() => new Producto('SSD', 'otros', 100, 4.5)).toThrow();
-    });
-});
-
 describe('Modelo ItemCarrito', () => {
-    const mockProd = new Producto('i9 14900K', 'cpu', 500, 10);
+    // Crear una instancia de Producto usando build para simular un producto existente
+    // sin necesidad de guardarlo en la base de datos ni inicializar sequelize.
+    const mockProd = Producto.build({ id: 'i9-14900k', nombre: 'i9 14900K', categoria: 'cpu', precio: 500, stock: 10, potencia: 0 });
 
     test('debería calcular el subtotal correctamente', () => {
         const item = new ItemCarrito(mockProd, 3);
         expect(item.getSubtotal()).toBe(1500); // 500 * 3
     });
 
-    test('debería heredar las propiedades del producto', () => {
+    test('debería exponer las propiedades del producto a través de la composición', () => {
         const item = new ItemCarrito(mockProd, 1);
         expect(item.nombre).toBe('i9 14900K');
+        expect(item.id).toBe('i9-14900k');
         expect(item.precio).toBe(500);
-        expect(item.cantidad).toBe(1);
+    });
+
+    test('debería lanzar un error si la cantidad es inválida', () => {
+        expect(() => new ItemCarrito(mockProd, 0)).toThrow('La cantidad debe ser un número entero positivo.');
+        expect(() => new ItemCarrito(mockProd, -1)).toThrow('La cantidad debe ser un número entero positivo.');
+        expect(() => new ItemCarrito(mockProd, 'a')).toThrow('La cantidad debe ser un número entero positivo.');
+    });
+
+    test('debería lanzar un error si el producto no es una instancia de Producto', () => {
+        const plainObject = { id: 'test', nombre: 'test', categoria: 'test', precio: 10, stock: 10, potencia: 0 };
+        expect(() => new ItemCarrito(plainObject, 1)).toThrow('El primer argumento debe ser una instancia de Producto.');
     });
 });

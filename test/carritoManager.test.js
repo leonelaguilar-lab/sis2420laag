@@ -7,11 +7,12 @@ describe('CarritoManager', () => {
 
     // --- Productos de Prueba con puntajes de 'potencia' ---
     // Potencia: 1-100. Un balance ideal es una diferencia < 20.
-    const cpuPotente = new Producto('CPU Fuerte', 'cpu', 600, 10, 95);
-    const cpuMedia = new Producto('CPU Media', 'cpu', 300, 10, 70);
-    const gpuPotente = new Producto('GPU Fuerte', 'gpu', 1200, 5, 100);
-    const gpuDebil = new Producto('GPU Débil', 'gpu', 200, 5, 40);
-    const ram = new Producto('RAM 16GB', 'ram', 80, 20, 0); // Potencia no aplica
+    // Usamos Producto.build() para crear instancias del modelo sin guardarlas en la DB.
+    const cpuPotente = Producto.build({ id: 'cpu-fuerte', nombre: 'CPU Fuerte', categoria: 'cpu', precio: 600, stock: 10, potencia: 95 });
+    const cpuMedia = Producto.build({ id: 'cpu-media', nombre: 'CPU Media', categoria: 'cpu', precio: 300, stock: 10, potencia: 70 });
+    const gpuPotente = Producto.build({ id: 'gpu-fuerte', nombre: 'GPU Fuerte', categoria: 'gpu', precio: 1200, stock: 5, potencia: 100 });
+    const gpuDebil = Producto.build({ id: 'gpu-debil', nombre: 'GPU Débil', categoria: 'gpu', precio: 200, stock: 5, potencia: 40 });
+    const ram = Producto.build({ id: 'ram-16gb', nombre: 'RAM 16GB', categoria: 'ram', precio: 80, stock: 20, potencia: 0 }); // Potencia no aplica
 
     beforeEach(() => {
         manager = new CarritoManager();
