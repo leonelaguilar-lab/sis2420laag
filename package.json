@@ -2,16 +2,25 @@
   "name": "proyecto-sis2420",
   "module": "index.js",
   "type": "module",
+  "scripts": {
+    "start:console": "node src/console/index.js",
+    "start:tui": "node src/tui/tui.js",
+    "start:web": "node src/web/index.js"
+  },
   "devDependencies": {
     "@types/bun": "latest"
   },
   "peerDependencies": {
     "typescript": "^5"
   },
+  "test": {
+    "setupFiles": ["./test/setup.js"]
+  },
   "dependencies": {
     "@clack/prompts": "^0.11.0",
     "chalk": "^5.6.2",
     "clack": "^0.1.0",
+    "express": "^5.1.0",
     "pdfkit": "^0.17.2",
     "sequelize": "^6.37.7",
     "sqlite3": "^5.1.7",

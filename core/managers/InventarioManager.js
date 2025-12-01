@@ -1,10 +1,7 @@
 
 import { Producto } from '../models/Producto.js';
+import { Op } from 'sequelize';
 
-/**
- * Manager para la lógica de negocio relacionada con el Inventario
- * Ahora opera directamente con el modelo del orm 
- */
 export class InventarioManager {
     constructor() {}
 
@@ -28,7 +25,6 @@ export class InventarioManager {
     async agregarProducto(nombre, categoria, precio, stock, potencia = 0) {
         const id = nombre.toLowerCase().replace(/\s/g, '-');
         
-        // Creamos el producto directamente en la base de datos
         const nuevoProducto = await Producto.create({
             id,
             nombre,
@@ -65,9 +61,26 @@ export class InventarioManager {
     }
 
     /**
-     * Actualiza el stock de un producto (sumando o restando)
+     * Obtiene productos por categoría que tengan stock disponible
+     * @param {string} categoria 
+     * @returns {Promise<Producto[]>}
+     */
+    async obtenerPorCategoria(categoria) {
+        return await Producto.findAll({
+            where: {
+                categoria: categoria,
+                stock: {
+                    [Op.gt]: 0
+                }
+            },
+            order: [['nombre', 'ASC']]
+        });
+    }
+
+    /**
+     * Actualiza el stock de un producto
      * @param {string} id
-     * @param {number} cantidad - Cantidad a sumar/restar (ej. -1 para vender)
+     * @param {number} cantidad
      */
     async actualizarStock(id, cantidad) {
         await Producto.actualizarStock(id, cantidad);

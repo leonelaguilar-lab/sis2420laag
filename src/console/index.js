@@ -1,7 +1,6 @@
 import readline from 'readline';
 import chalk from 'chalk';
-import { sequelize } from '../../core/data/database.js';
-import { Producto } from '../../core/models/Producto.js';
+import { inicializarBaseDeDatos, cerrarConexion } from '../../core/data/setup.js';
 import { InventarioManager } from '../../core/managers/InventarioManager.js';
 import { CarritoManager } from '../../core/managers/CarritoManager.js';
 
@@ -167,42 +166,49 @@ export class ConsoleController {
     }
 
     async gestionarCompraPorCategoria(categoria) {
-        const todosLosProductos = await this.inventarioManager.obtenerTodos();
-        const productosFiltrados = todosLosProductos.filter(p => p.categoria === categoria && p.stock > 0);
-        
-        this.view.mostrarProductosParaSeleccion(productosFiltrados, `Comprar ${categoria.toUpperCase()}`);
+        // La lógica de filtrado ahora está en el manager
+        const productosDisponibles = await this.inventarioManager.obtenerPorCategoria(categoria);
 
-        if (productosFiltrados.length === 0) {
+        this.view.mostrarProductosParaSeleccion(productosDisponibles, `Comprar ${categoria.toUpperCase()}`);
+
+        if (productosDisponibles.length === 0) {
             this.view.mostrarMensaje(`No hay productos de ${categoria} disponibles o en stock.`, "red");
             await this.pausar();
             return;
         }
-        
+
         const seleccionRaw = await this.question(chalk.yellow("Introduce el número del producto (o '0' para volver): "));
         if (seleccionRaw === '0') return;
 
         const indice = parseInt(seleccionRaw) - 1;
-        if (isNaN(indice) || indice < 0 || indice >= productosFiltrados.length) {
+        if (isNaN(indice) || indice < 0 || indice >= productosDisponibles.length) {
             this.view.mostrarMensaje("Selección de producto no válida.", "red");
             await this.pausar();
             return;
         }
 
-        const productoSeleccionado = productosFiltrados[indice];
-        const cantidadRaw = await this.question(chalk.yellow(`¿Cuántas unidades de ${productoSeleccionado.nombre} quieres? (Max: ${productoSeleccionado.stock}): `));
+        const productoSeleccionado = productosDisponibles[indice];
+        
+        const productoActualizado = await this.inventarioManager.obtenerPorId(productoSeleccionado.id);
+        
+        if (!productoActualizado || productoActualizado.stock <= 0) {
+            this.view.mostrarMensaje("El producto seleccionado ya no está disponible.", "red");
+            await this.pausar();
+            return;
+        }
+
+        const cantidadRaw = await this.question(chalk.yellow(`¿Cuántas unidades de ${productoActualizado.nombre} quieres? (Max: ${productoActualizado.stock}): `));
         const cantidad = parseInt(cantidadRaw);
 
-        if (isNaN(cantidad) || cantidad <= 0 || cantidad > productoSeleccionado.stock) {
+        if (isNaN(cantidad) || cantidad <= 0 || cantidad > productoActualizado.stock) {
             this.view.mostrarMensaje("Cantidad no válida o stock insuficiente.", "red");
             await this.pausar();
             return;
         }
 
         try {
-            this.carritoManager.agregarItem(productoSeleccionado, cantidad);
-            // La actualización de stock ahora es asíncrona
-            await this.inventarioManager.actualizarStock(productoSeleccionado.id, -cantidad);
-            this.view.mostrarMensaje(`${cantidad}x ${productoSeleccionado.nombre} añadido al carrito.`, "green");
+            await this.carritoManager.agregarItem(productoActualizado, cantidad);
+            this.view.mostrarMensaje(`${cantidad}x ${productoActualizado.nombre} añadido al carrito.`, "green");
         } catch (e) {
             this.view.mostrarMensaje(`Error al añadir al carrito: ${e.message}`, "red");
         }
@@ -260,9 +266,7 @@ export class ConsoleController {
         }
 
         try {
-            const eliminado = this.carritoManager.eliminarItem(indice);
-            // Devolver el stock es una operación asíncrona
-            await this.inventarioManager.actualizarStock(eliminado.id, eliminado.cantidad);
+            const eliminado = await this.carritoManager.eliminarItem(indice);
             this.view.mostrarMensaje(`${eliminado.nombre} (${eliminado.cantidad} uds) eliminado del carrito. Stock devuelto.`, "yellow");
         } catch (e) {
             this.view.mostrarMensaje(`Error al eliminar: ${e.message}`, "red");
@@ -279,9 +283,9 @@ export class ConsoleController {
         }
         const total = this.carritoManager.calcularTotal();
         this.view.mostrarMensaje(`Finalizando compra por un total de ${total.toFixed(2)} Bs...`, "green");
-        
+
         try {
-            this.carritoManager.vaciarCarrito();
+            this.carritoManager.finalizarCompra();
             this.view.mostrarMensaje("¡Compra completada con éxito!", "green");
         } catch (e) {
             this.view.mostrarMensaje(`Error al finalizar la compra: ${e.message}`, "red");
@@ -314,7 +318,7 @@ export class ConsoleController {
             const nombre = await this.question("Nombre del producto: ");
             const categoriaRaw = await this.question(`Categoría (${this.CATEGORIAS_VALIDAS.join(', ')}): `);
             const categoria = categoriaRaw.toLowerCase();
-            
+
             if (!this.CATEGORIAS_VALIDAS.includes(categoria)) {
                 this.view.mostrarMensaje("Categoría no válida.", "red");
                 await this.pausar();
@@ -324,8 +328,7 @@ export class ConsoleController {
             const precio = parseFloat(await this.question("Precio: "));
             const stock = parseInt(await this.question("Stock: "));
             const potencia = (categoria === 'cpu' || categoria === 'gpu') ? parseInt(await this.question("Potencia (0 si no aplica): ")) : 0;
-            
-            // La llamada al manager ahora es asíncrona
+
             await this.inventarioManager.agregarProducto(nombre, categoria, precio, stock, potencia);
             this.view.mostrarMensaje(`Producto '${nombre}' agregado con éxito.`, "green");
 
@@ -351,7 +354,6 @@ export class ConsoleController {
         if (id === '0') return;
 
         try {
-            // La llamada al manager ahora es asíncrona
             await this.inventarioManager.eliminarProducto(id);
             this.view.mostrarMensaje(`Producto con ID '${id}' eliminado con éxito.`, "yellow");
         } catch (e) {
@@ -367,26 +369,21 @@ async function main() {
     const question = (query) => new Promise(resolve => rl.question(query, resolve));
 
     try {
-        console.log(chalk.blue('Conectando con la base de datos...'));
-        await sequelize.sync({ alter: true }); 
-        console.log(chalk.green('¡Conexión exitosa y modelos sincronizados!'));
-
-        await Producto.inicializarDatos();
+        await inicializarBaseDeDatos();
 
         const inventarioManager = new InventarioManager();
-        const carritoManager = new CarritoManager();
-        
+        const carritoManager = new CarritoManager(inventarioManager);
+
         const view = new ConsoleView(console.log, () => console.clear());
         const controller = new ConsoleController(inventarioManager, carritoManager, view, question);
 
         await controller.run();
 
     } catch (error) {
-        console.error(chalk.red('Error fatal durante la inicialización:'), error);
+        console.error(chalk.red('La aplicación no pudo iniciar.'));
     } finally {
-        await sequelize.close();
+        await cerrarConexion();
         rl.close();
-        console.log(chalk.blue('Conexión a la base de datos cerrada.'));
     }
 }
 

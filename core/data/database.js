@@ -10,11 +10,5 @@ const RUTA_DB = join(__dirname, DB_FILE_NAME);
 export const sequelize = new Sequelize({
   dialect: 'sqlite',
   storage: RUTA_DB, 
-  logging: false, 
-  pool: {
-    max: 5,
-    min: 0,
-    acquire: 30000,
-    idle: 10000,
-  },
+  logging: false
 });

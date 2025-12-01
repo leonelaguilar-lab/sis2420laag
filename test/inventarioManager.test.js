@@ -1,17 +1,7 @@
-// Set environment variable for test database file BEFORE importing database.js
-process.env.TEST_DB_FILE = 'test_inventario.sqlite';
-
 import { InventarioManager } from '../core/managers/InventarioManager.js';
 import { Producto } from '../core/models/Producto.js';
 import { sequelize } from '../core/data/database.js';
 import { expect, test, describe, beforeAll, afterAll, beforeEach } from 'bun:test';
-import { unlink, access } from 'fs/promises';
-import { constants } from 'fs';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const TEST_DB_PATH = join(__dirname, '../core/data', process.env.TEST_DB_FILE);
 
 // Datos iniciales para cada test
 const mockInventarioInicial = [
@@ -25,30 +15,19 @@ describe('InventarioManager (Integración con Sequelize)', () => {
 
     // Conectar a la base de datos y sincronizar modelos una vez antes de todos los tests
     beforeAll(async () => {
-        // force: true creará las tablas, eliminando cualquier dato existente.
-        // Esto asegura un entorno limpio para los tests.
         await sequelize.sync({ force: true });
-        manager = new InventarioManager(); // Instanciar el manager una vez
+        manager = new InventarioManager();
     });
 
     // Limpiar y poblar la base de datos antes de cada test
     beforeEach(async () => {
-        // Eliminar todos los productos existentes
         await Producto.destroy({ truncate: true });
-        // Insertar los datos de prueba
         await Producto.bulkCreate(mockInventarioInicial);
     });
 
-    // Cerrar la conexión a la base de datos y eliminar el archivo de la DB de test
+    // Cerrar la conexión a la base de datos después de todos los tests
     afterAll(async () => {
         await sequelize.close();
-        try {
-            await access(TEST_DB_PATH, constants.F_OK); // Check if file exists
-            await unlink(TEST_DB_PATH); // Delete the test DB file
-            console.log(`[Test Cleanup] Deleted test database: ${TEST_DB_PATH}`);
-        } catch (e) {
-            console.warn(`[Test Cleanup] Test database not found or could not be deleted: ${TEST_DB_PATH} (${e.message})`);
-        }
     });
 
     test('debería cargar el inventario inicial', async () => {

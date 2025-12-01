@@ -1,41 +1,51 @@
 
 import { ItemCarrito } from '../models/Producto.js';
 
-//Manager para la lógica de negocio del Carrito de Compras
 
 export class CarritoManager {
-    constructor() {
+    constructor(inventarioManager) {
+        if (!inventarioManager) {
+            throw new Error("CarritoManager requiere un InventarioManager.");
+        }
         this.carrito = []; // Almacena instancias de ItemCarrito
+        this.inventarioManager = inventarioManager;
     }
 
     obtenerItems() {
         return this.carrito;
     }
 
-    agregarItem(producto, cantidad) {
-        // Validación del stock 
+    async agregarItem(producto, cantidad) {
         if (cantidad > producto.stock) {
             throw new Error(`Stock insuficiente. Máximo disponible: ${producto.stock}.`);
         }
 
-        const indice = this.carrito.findIndex(item => item.id === producto.id);
+        // Primero se actualizamos el stock en la base de datos
+        await this.inventarioManager.actualizarStock(producto.id, -cantidad);
 
+        // Luego se agrega al carrito en la memoria
+        const indice = this.carrito.findIndex(item => item.id === producto.id);
         if (indice !== -1) {
-            // Si el producto ya existe, actualiza la cantidad
             this.carrito[indice].cantidad += cantidad;
         } else {
-            // Si es nuevo, añade un ItemCarrito
             const item = new ItemCarrito(producto, cantidad);
             this.carrito.push(item);
         }
     }
 
-    eliminarItem(indice) {
+    async eliminarItem(indice) {
         if (indice < 0 || indice >= this.carrito.length) {
             throw new Error("Índice de carrito inválido.");
         }
-        const itemEliminado = this.carrito.splice(indice, 1);
-        return itemEliminado[0];
+        const itemEliminado = this.carrito.splice(indice, 1)[0];
+
+        await this.inventarioManager.actualizarStock(itemEliminado.id, itemEliminado.cantidad);
+        
+        return itemEliminado;
+    }
+
+    finalizarCompra() {
+        this.vaciarCarrito();
     }
 
     vaciarCarrito() {

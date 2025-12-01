@@ -130,11 +130,7 @@ Producto.init({
     timestamps: false
 });
 
-/**
- * Representa un artículo en el carrito de compras.
- * Usa composición (contiene un Producto) en lugar de herencia para separar
- * el modelo de la base de datos de la lógica del carrito.
- */
+//Representa un artículo en el carrito de compras graciasal modelo de la base de datos de la lógica del carrito
 export class ItemCarrito {
     /**
      * @param {Producto} producto 
