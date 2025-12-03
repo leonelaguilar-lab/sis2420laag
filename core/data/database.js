@@ -4,11 +4,16 @@ import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const DB_FILE_NAME = process.env.TEST_DB_FILE || 'inventario.sqlite';
-const RUTA_DB = join(__dirname, DB_FILE_NAME);
+
+// Usar la variable de entorno NODE_ENV para determinar la configuración de la DB
+const isTestEnv = process.env.NODE_ENV === 'test';
+
+const storage = isTestEnv
+  ? ':memory:' // Usar DB en memoria para tests
+  : join(__dirname, 'inventario.sqlite'); // Usar archivo para desarrollo/producción
 
 export const sequelize = new Sequelize({
   dialect: 'sqlite',
-  storage: RUTA_DB, 
-  logging: false
+  storage: storage,
+  logging: false // Desactivar logging de SQL en ambos entornos
 });

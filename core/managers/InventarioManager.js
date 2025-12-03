@@ -85,4 +85,65 @@ export class InventarioManager {
     async actualizarStock(id, cantidad) {
         await Producto.actualizarStock(id, cantidad);
     }
+
+    /**
+     * Obtiene todos los productos marcados como destacados
+     * @returns {Promise<Producto[]>}
+     */
+    async obtenerDestacados() {
+        return await Producto.findAll({
+            where: {
+                esDestacado: true,
+                stock: { [Op.gt]: 0 }
+            }
+        });
+    }
+
+    /**
+     * Obtiene una lista de todas las categorías únicas de productos
+     * @returns {Promise<string[]>}
+     */
+    async obtenerCategorias() {
+        const categorias = await Producto.findAll({
+            attributes: ['categoria'],
+            group: ['categoria'],
+            order: [['categoria', 'ASC']]
+        });
+        // Extrae solo el string de cada objeto
+        return categorias.map(item => item.categoria);
+    }
+
+    /**
+     * Busca productos por un término de búsqueda en el nombre
+     * @param {string} termino
+     * @returns {Promise<Producto[]>}
+     */
+    async buscar(termino) {
+        return await Producto.findAll({
+            where: {
+                nombre: {
+                    [Op.like]: `%${termino}%`
+                }
+            }
+        });
+    }
+
+    /**
+     * Obtiene productos recomendados de la misma categoría, excluyendo el actual.
+     * @param {string} categoria La categoría de la que obtener recomendaciones.
+     * @param {string} excluirId El ID del producto a excluir.
+     * @returns {Promise<Producto[]>}
+     */
+    async obtenerRecomendaciones(categoria, excluirId) {
+        return await Producto.findAll({
+            where: {
+                categoria: categoria,
+                id: {
+                    [Op.ne]: excluirId // Excluir el producto actual
+                }
+            },
+            order: sequelize.random(), // Ordenar aleatoriamente (puede variar según el dialecto de DB)
+            limit: 4 // Limitar a 4 recomendaciones
+        });
+    }
 }

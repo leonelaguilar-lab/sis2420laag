@@ -1,40 +1,42 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tienda de Componentes</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="/style.css">
 </head>
 <body>
 
-    <h1>Tienda de Componentes</h1>
+    <header class="main-header">
+        <!-- El header se insertará aquí dinámicamente -->
+    </header>
 
-    <div class="container">
-        <div class="inventory">
-            <h2>Inventario</h2>
-            <ul class="inventory-list" id="inventory-list">
-           
-            </ul>
-        </div>
+    <main>
+        <section class="hero-carousel-container">
+            <h2>Productos Destacados</h2>
+            <div id="hero-carousel">
+                <div id="carousel-slides-container">
+                    <!-- El carrusel se renderizará aquí -->
+                </div>
+                <button id="carousel-btn-prev" class="carousel-btn">&lt;</button>
+                <button id="carousel-btn-next" class="carousel-btn">&gt;</button>
+            </div>
+        </section>
 
-        <div class="cart">
-            <h2>Carrito</h2>
-            <ul class="cart-items" id="cart-items">
-             
-            </ul>
-            <div id="bottleneck-analysis" class="bottleneck-analysis">
-                
+        <section class="categories-container">
+            <h2>Categorías</h2>
+            <div id="categories-grid">
+                <!-- Las categorías se renderizarán aquí -->
             </div>
-            <div class="cart-total" id="cart-total">
-                Total: 0.00 Bs
-            </div>
-            <div class="cart-actions">
-                <button class="finalize-btn" id="finalize-btn">Finalizar Compra</button>
-            </div>
-        </div>
-    </div>
+        </section>
+    </main>
 
-    <script src="app.js"></script>
+    <footer class="main-footer">
+        <!-- El footer se insertará aquí dinámicamente -->
+    </footer>
+
+    <script src="/js/index.js"></script>
+    <script src="/js/main.js"></script>
 </body>
 </html>

@@ -21,7 +21,7 @@ describe('InventarioManager (Integración con Sequelize)', () => {
 
     // Limpiar y poblar la base de datos antes de cada test
     beforeEach(async () => {
-        await Producto.destroy({ truncate: true });
+        await Producto.destroy({ truncate: true, cascade: true });
         await Producto.bulkCreate(mockInventarioInicial);
     });
 

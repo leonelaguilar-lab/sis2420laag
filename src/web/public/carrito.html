@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Carrito de Compras - Tienda de Componentes</title>
+    <link rel="stylesheet" href="/style.css"> 
+</head>
+<body>
+
+    <header class="main-header">
+        <!-- El header se insertará aquí dinámicamente -->
+    </header>
+
+    <main class="container">
+        <h1>Tu Carrito</h1>
+        <div class="cart-page-layout">
+            <div class="cart-items-container">
+                <ul id="cart-items-list">
+                    <!-- Los productos del carrito se renderizarán aquí -->
+                </ul>
+                <div class="cart-page-actions">
+                    <a href="/" class="btn-secondary" id="continue-shopping-btn">Seguir Comprando</a>
+                </div>
+            </div>
+            <aside class="cart-summary">
+                <h2>Resumen</h2>
+                <div id="bottleneck-analysis" class="bottleneck-analysis">
+                    <!-- Análisis de cuello de botella aquí -->
+                </div>
+                <div class="cart-total">
+                    <span>Total:</span>
+                    <span id="cart-total-amount">0.00 Bs</span>
+                </div>
+                <button id="finalize-purchase-btn" class="btn-primary">Finalizar Compra</button>
+            </aside>
+        </div>
+    </main>
+    
+    <footer class="main-footer">
+        <!-- El footer se insertará aquí dinámicamente -->
+    </footer>
+
+    <!-- Modal de Factura/Recibo -->
+    <div id="invoice-modal" class="modal">
+        <div class="modal-content invoice-modal-content">
+            <span class="modal-close-btn">&times;</span>
+            <h2>¡Gracias por tu compra!</h2>
+            <p>Este es un resumen de tu pedido:</p>
+            <ul id="invoice-items-list" class="invoice-items">
+                <!-- Items de la factura se renderizarán aquí -->
+            </ul>
+            <div id="invoice-total" class="invoice-total">
+                <!-- Total de la factura aquí -->
+            </div>
+            <button id="invoice-close-btn" class="btn-primary">Cerrar</button>
+        </div>
+    </div>
+
+    <script src="/js/carrito.js"></script>
+    <script src="/js/main.js"></script>
+</body>
+</html>

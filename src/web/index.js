@@ -18,10 +18,28 @@ app.use(express.static(path.join(__dirname, 'public')));
 const inventarioManager = new InventarioManager();
 const carritoManager = new CarritoManager(inventarioManager);
 
-// Ruta para la página principal (frontend)
+// Ruta para la página principal (homepage)
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
+
+// Rutas para las nuevas páginas HTML
+app.get('/categoria/:nombre', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'categoria.html'));
+});
+
+app.get('/producto/:id', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'producto.html'));
+});
+
+app.get('/carrito', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'carrito.html'));
+});
+
+app.get('/busqueda', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'busqueda.html'));
+});
+
 
 // --- Rutas de la API ---
 
@@ -30,7 +48,10 @@ app.get('/api', (req, res) => {
         message: 'Bienvenido a la API de la Tienda de Componentes',
         rutas: {
             inventario: 'GET /api/inventario',
-            inventario_por_categoria: 'GET /api/inventario/:categoria',
+            productos_destacados: 'GET /api/inventario/destacados',
+            producto_por_id: 'GET /api/inventario/producto/:id',
+            inventario_por_categoria: 'GET /api/inventario/categoria/:categoria',
+            categorias: 'GET /api/categorias',
             carrito: 'GET /api/carrito',
             agregar_al_carrito: 'POST /api/carrito',
             eliminar_del_carrito: 'DELETE /api/carrito/:indice',
@@ -49,16 +70,73 @@ app.get('/api/inventario', async (req, res) => {
     }
 });
 
-app.get('/api/inventario/:categoria', async (req, res) => {
+app.get('/api/inventario/destacados', async (req, res) => {
+    try {
+        const productos = await inventarioManager.obtenerDestacados();
+        res.json(productos);
+    } catch (error) {
+        res.status(500).json({ error: 'Error al obtener productos destacados.' });
+    }
+});
+
+app.get('/api/inventario/producto/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const producto = await inventarioManager.obtenerPorId(id);
+        if (!producto) {
+            return res.status(404).json({ message: `Producto con id '${id}' no encontrado.` });
+        }
+        res.json(producto);
+    } catch (error) {
+        res.status(500).json({ error: 'Error al obtener el producto.' });
+    }
+});
+
+app.get('/api/inventario/producto/:id/recomendaciones', async (req, res) => {
+    const { id } = req.params;
+    try {
+        // Primero, obtenemos el producto actual para saber su categoría
+        const productoActual = await inventarioManager.obtenerPorId(id);
+        if (!productoActual) {
+            return res.status(404).json({ message: `Producto con id '${id}' no encontrado.` });
+        }
+        
+        const recomendaciones = await inventarioManager.obtenerRecomendaciones(productoActual.categoria, id);
+        res.json(recomendaciones);
+    } catch (error) {
+        res.status(500).json({ error: 'Error al obtener las recomendaciones.' });
+    }
+});
+
+app.get('/api/inventario/categoria/:categoria', async (req, res) => {
     const { categoria } = req.params;
     try {
         const productos = await inventarioManager.obtenerPorCategoria(categoria);
-        if (productos.length === 0) {
-            return res.status(404).json({ message: `No se encontraron productos en la categoría '${categoria}' o no hay stock.` });
-        }
         res.json(productos);
     } catch (error) {
         res.status(500).json({ error: 'Error al obtener productos por categoría.' });
+    }
+});
+
+app.get('/api/categorias', async (req, res) => {
+    try {
+        const categorias = await inventarioManager.obtenerCategorias();
+        res.json(categorias);
+    } catch (error) {
+        res.status(500).json({ error: 'Error al obtener las categorías.' });
+    }
+});
+
+app.get('/api/busqueda', async (req, res) => {
+    const { q } = req.query;
+    if (!q) {
+        return res.status(400).json({ error: 'El parámetro de búsqueda "q" es requerido.' });
+    }
+    try {
+        const resultados = await inventarioManager.buscar(q);
+        res.json(resultados);
+    } catch (error) {
+        res.status(500).json({ error: 'Error al realizar la búsqueda.' });
     }
 });
 
